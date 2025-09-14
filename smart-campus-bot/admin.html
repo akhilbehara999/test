@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="css/admin.css">
     <link rel="stylesheet" href="css/animations.css">
     <link rel="stylesheet" href="css/responsive.css">
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div id="loader-wrapper">
@@ -17,7 +19,7 @@
     <header class="admin-header">
         <h1>Admin Dashboard</h1>
         <div class="admin-header-actions">
-            <button id="ai-config-btn" class="admin-config-btn" title="Configure AI Settings">🤖 AI Setup</button>
+            <a href="admin-api-config.html" class="admin-config-btn" title="Manage API Configurations">⚙️ API Config</a>
             <button id="logout-btn" class="logout-btn">Logout</button>
         </div>
     </header>
@@ -141,7 +143,9 @@
     </main>
     <script src="js/utils.js"></script>
     <script src="js/crypto-utils.js"></script>
+    <script src="js/supabase-config.js"></script>
     <script src="js/data.js"></script>
+    <script src="js/api-config-supabase.js"></script>
     <script src="js/global.js"></script>
     <script src="js/admin.js"></script>
 </body>

@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // Hide loader and show content
     const loader = document.getElementById('loader-wrapper');
     if (loader) {
@@ -22,22 +22,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // AI Configuration button (Admin Only)
-    const aiConfigBtn = document.getElementById('ai-config-btn');
-    if (aiConfigBtn) {
-        aiConfigBtn.addEventListener('click', () => {
-            window.location.href = 'setup-ai-config.html';
-        });
-    }
+    // Removed AI Configuration button functionality
 
     /**
      * Populates the overview cards with real and simulated data.
      */
-    function populateOverviewCards() {
+    async function populateOverviewCards() {
         // Total Users
         const totalUsersEl = document.getElementById('total-users');
         if (totalUsersEl) {
-            const users = getUsers();
+            const users = await getUsers();
             totalUsersEl.textContent = users.length;
         }
 
@@ -57,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /**
      * Populates the admin insights with real and calculated data.
      */
-    function populateAdminInsights() {
+    async function populateAdminInsights() {
         // System Analytics
         const activeSessionsEl = document.getElementById('active-sessions');
         const dailyLoginsEl = document.getElementById('daily-logins');
@@ -65,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (activeSessionsEl) {
             // Simulate active sessions based on recent activity
-            const users = getUsers();
+            const users = await getUsers();
             const activeSessions = users.filter(user => user.lastLogin !== 'N/A').length;
             activeSessionsEl.textContent = activeSessions;
         }
@@ -131,10 +125,10 @@ document.addEventListener('DOMContentLoaded', () => {
      * Renders the user data into the management table.
      * Filters users based on the search input.
      */
-    function renderUserTable() {
+    async function renderUserTable() {
         if (!userTableBody) return;
 
-        const users = getUsers();
+        const users = await getUsers();
         const searchTerm = userSearchInput.value.toLowerCase();
 
         userTableBody.innerHTML = ''; // Clear existing rows
@@ -160,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Initial population of dashboard elements
-    populateOverviewCards();
-    populateAdminInsights();
-    renderUserTable();
+    await populateOverviewCards();
+    await populateAdminInsights();
+    await renderUserTable();
 });

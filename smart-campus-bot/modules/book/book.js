@@ -14,6 +14,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusDiv = document.getElementById('status');
     const outputTextDiv = document.getElementById('output-text');
 
+    // URL Parameters and Admin View Detection
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAdminView = urlParams.get('view') === 'admin';
+
+    /**
+     * Show a notification message to the user
+     * @param {string} message - The message to display
+     * @param {string} type - The type of message ('info', 'success', 'warning', 'error')
+     */
+    function showNotification(message, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.textContent = message;
+        
+        // Add to document
+        document.body.appendChild(notification);
+        
+        // Remove after 5 seconds with fade out animation
+        setTimeout(() => {
+            notification.classList.add('fade-out');
+            // Remove element after animation completes
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 500);
+        }, 5000);
+    }
 
     // --- Drag and Drop Logic ---
     if (textInput) {
@@ -36,7 +65,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-
     /**
      * Handles the dropped file, reading its content based on type.
      * @param {File} file The file that was dropped.
@@ -49,6 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
             reader.onload = (e) => {
                 textInput.value = e.target.result;
                 statusDiv.textContent = 'File loaded successfully.';
+                showNotification('File loaded successfully!', 'success');
             };
             reader.readAsText(file);
         } else if (file.name.endsWith('.docx')) {
@@ -59,19 +88,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     .then(result => {
                         textInput.value = result.value;
                         statusDiv.textContent = 'File loaded successfully.';
+                        showNotification('File loaded successfully!', 'success');
                     })
                     .catch(err => {
                         console.error('Error parsing .docx file:', err);
                         statusDiv.textContent = 'Error: Could not read .docx file.';
+                        showNotification('Error: Could not read .docx file.', 'error');
                     });
             };
             reader.readAsArrayBuffer(file);
         } else {
             statusDiv.textContent = `Error: Unsupported file type (${file.type}). Please use .txt or .docx.`;
-            alert(`Unsupported file type: ${file.type}`);
+            showNotification(`Unsupported file type: ${file.type}`, 'error');
         }
     }
-
 
     /**
      * Check if user has admin authentication
@@ -88,18 +118,69 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     class BookAIProcessor {
         constructor() {
-            this.apiKey = localStorage.getItem('book-tools-api-key') || '';
-            
-            // Allow any model - no restrictions
-            this.model = localStorage.getItem('book-tools-model') || 'openai/gpt-oss-20b:free';
-            
-            this.baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+            this.apiKey = '';
+            this.model = '';
+            this.baseUrl = '';
+        }
+
+        /**
+         * Initialize AI configuration from Supabase
+         */
+        async initConfig() {
+            try {
+                // Ensure Supabase is properly initialized
+                if (typeof initSupabaseClient === 'function') {
+                    // This will initialize the Supabase client if needed
+                    const supabase = initSupabaseClient();
+                    if (!supabase) {
+                        console.warn('Supabase client could not be initialized');
+                    }
+                }
+                
+                // Try to get configuration from Supabase
+                if (typeof getApiConfig === 'function') {
+                    const result = await getApiConfig('book', 'OpenRouter');
+                    
+                    if (result.success) {
+                        this.apiKey = result.data.api_key;
+                        this.model = result.data.model_name;
+                        this.baseUrl = result.data.api_endpoint;
+                        return true;
+                    } else {
+                        console.warn('No API configuration found in Supabase:', result.error);
+                        // Fallback to localStorage for backward compatibility
+                        this.apiKey = localStorage.getItem('book-tools-api-key') || '';
+                        this.model = localStorage.getItem('book-tools-model') || 'openai/gpt-oss-20b:free';
+                        this.baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+                        return false;
+                    }
+                } else {
+                    // Fallback to localStorage if Supabase functions are not available
+                    console.warn('Supabase API functions not available, using localStorage');
+                    this.apiKey = localStorage.getItem('book-tools-api-key') || '';
+                    this.model = localStorage.getItem('book-tools-model') || 'openai/gpt-oss-20b:free';
+                    this.baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error initializing AI config:', error);
+                // Fallback to localStorage for backward compatibility
+                this.apiKey = localStorage.getItem('book-tools-api-key') || '';
+                this.model = localStorage.getItem('book-tools-model') || 'openai/gpt-oss-20b:free';
+                this.baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+                return false;
+            }
         }
 
         /**
          * Test AI connection and update status
          */
         async testConnection() {
+            // Initialize config if not already done
+            if (!this.apiKey) {
+                await this.initConfig();
+            }
+            
             if (!this.apiKey) {
                 this.updateStatus('error', 'API key not configured');
                 return false;
@@ -118,7 +199,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (error) {
                 console.error('AI Test Error:', error);
-                this.updateStatus('error', `Connection failed: ${error.message}`);
+                let errorMessage = `Connection failed: ${error.message}`;
+                
+                // Provide specific guidance for OpenRouter privacy policy errors
+                if (error.message.includes('data policy') || error.message.includes('privacy')) {
+                    errorMessage += ' - Please check your OpenRouter privacy settings.';
+                }
+                
+                this.updateStatus('error', errorMessage);
                 return false;
             }
         }
@@ -143,13 +231,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         /**
-         * Save configuration to localStorage
+         * Save configuration to localStorage (deprecated - now handled by Supabase)
          */
         saveConfig(apiKey, model) {
-            this.apiKey = apiKey;
-            this.model = model;
-            localStorage.setItem('book-tools-api-key', apiKey);
-            localStorage.setItem('book-tools-model', model);
+            console.warn('saveConfig is deprecated. Use Supabase API configuration instead.');
         }
 
         /**
@@ -159,6 +244,11 @@ document.addEventListener('DOMContentLoaded', () => {
          * @returns {Promise<string>} The AI's response content or an error message.
          */
         async callOpenRouter(systemPrompt, userContent) {
+            // Initialize config if not already done
+            if (!this.apiKey) {
+                await this.initConfig();
+            }
+            
             if (!this.apiKey) {
                 return "Error: API Key not set. Please configure it in the admin panel.";
             }
@@ -188,9 +278,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json();
+                    const errorData = await response.json().catch(() => ({}));
+                    let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                    
+                    // Handle specific OpenRouter errors
+                    if (errorData.error?.message) {
+                        errorMessage = errorData.error.message;
+                        
+                        // Provide specific guidance for privacy policy errors
+                        if (errorMessage.includes('data policy') || errorMessage.includes('privacy')) {
+                            errorMessage += '\n\nPlease visit https://openrouter.ai/settings/privacy to configure your privacy settings for free models.';
+                        }
+                    }
+                    
                     console.error("API Error:", errorData);
-                    return `API Error: ${errorData.error?.message || 'Unknown error'}`;
+                    return `API Error: ${errorMessage}`;
                 }
 
                 const data = await response.json();
@@ -198,28 +300,64 @@ document.addEventListener('DOMContentLoaded', () => {
 
             } catch (error) {
                 console.error("Network or fetch error:", error);
-                return "Error: Could not connect to the AI service. Check your network connection.";
+                
+                // Provide user-friendly error messages
+                let userMessage = "Failed to process your text. ";
+                
+                if (error.message.includes('429') || error.message.includes('rate limit')) {
+                    userMessage += 'The AI is busy right now. Please wait a few seconds and try again.';
+                } else if (error.message.includes('network') || error.message.includes('fetch')) {
+                    userMessage += 'Network error. Please check your internet connection and try again.';
+                } else {
+                    userMessage += 'An unexpected error occurred. Please try again later.';
+                }
+                
+                return userMessage;
             }
         }
     }
 
     const aiProcessor = new BookAIProcessor();
 
+    // Initialize AI configuration when the page loads
+    document.addEventListener('DOMContentLoaded', async function() {
+        await aiProcessor.initConfig();
+        // Test connection after a short delay to allow UI to load
+        setTimeout(() => {
+            aiProcessor.testConnection();
+        }, 1000);
+    });
 
     summarizeBtn.addEventListener('click', async () => {
         const text = textInput.value;
         if (text.trim() === '') {
-            alert('Please enter some text.');
+            showNotification('Please enter some text to summarize.', 'warning');
             return;
         }
         statusDiv.textContent = 'Summarizing...';
         outputTextDiv.textContent = ''; // Clear previous output
 
+        // Show loading state
+        outputTextDiv.innerHTML = '<div class="loading-state"><div class="loading-icon">🧠</div><div class="loading-text">AI is summarizing your text...</div></div>';
+
+        // Ensure AI processor is initialized with Supabase config
+        await aiProcessor.initConfig();
+        
         const systemPrompt = "You are an expert text summarizer. Take the user's text and provide a concise summary formatted as a list of bullet points.";
         const result = await aiProcessor.callOpenRouter(systemPrompt, text);
+        
+        // Check if result is an error message
+        if (result.startsWith('Failed to process') || result.startsWith('Error:') || result.startsWith('API Error:')) {
+            outputTextDiv.innerHTML = `<div class="error-state"><div class="error-icon">❌</div><div class="error-text">${result}</div></div>`;
+            statusDiv.textContent = 'Summarization failed.';
+            showNotification(result, 'error');
+            return;
+        }
 
-        typewriterEffect(outputTextDiv, result);
+        // Add fade-in animation
+        outputTextDiv.innerHTML = `<div class="fade-in">${result}</div>`;
         statusDiv.textContent = 'Summary complete.';
+        showNotification('Text summarized successfully!', 'success');
         
         // Track operation
         trackOperation('summarize');
@@ -228,17 +366,33 @@ document.addEventListener('DOMContentLoaded', () => {
     expandBtn.addEventListener('click', async () => {
         const text = textInput.value;
         if (text.trim() === '') {
-            alert('Please enter some text.');
+            showNotification('Please enter some text to expand.', 'warning');
             return;
         }
         statusDiv.textContent = 'Expanding...';
         outputTextDiv.textContent = ''; // Clear previous output
 
+        // Show loading state
+        outputTextDiv.innerHTML = '<div class="loading-state"><div class="loading-icon">📈</div><div class="loading-text">AI is expanding your text...</div></div>';
+
+        // Ensure AI processor is initialized with Supabase config
+        await aiProcessor.initConfig();
+        
         const systemPrompt = "You are a text expander. Take the user's text and elaborate on it, providing a more detailed and descriptive version.";
         const result = await aiProcessor.callOpenRouter(systemPrompt, text);
+        
+        // Check if result is an error message
+        if (result.startsWith('Failed to process') || result.startsWith('Error:') || result.startsWith('API Error:')) {
+            outputTextDiv.innerHTML = `<div class="error-state"><div class="error-icon">❌</div><div class="error-text">${result}</div></div>`;
+            statusDiv.textContent = 'Expansion failed.';
+            showNotification(result, 'error');
+            return;
+        }
 
-        typewriterEffect(outputTextDiv, result);
+        // Add fade-in animation
+        outputTextDiv.innerHTML = `<div class="fade-in">${result}</div>`;
         statusDiv.textContent = 'Expansion complete.';
+        showNotification('Text expanded successfully!', 'success');
         
         // Track operation
         trackOperation('expand');
@@ -247,17 +401,33 @@ document.addEventListener('DOMContentLoaded', () => {
     rephraseBtn.addEventListener('click', async () => {
         const text = textInput.value;
         if (text.trim() === '') {
-            alert('Please enter some text.');
+            showNotification('Please enter some text to rephrase.', 'warning');
             return;
         }
         statusDiv.textContent = 'Rephrasing...';
         outputTextDiv.textContent = '';
 
+        // Show loading state
+        outputTextDiv.innerHTML = '<div class="loading-state"><div class="loading-icon">🔄</div><div class="loading-text">AI is rephrasing your text...</div></div>';
+
+        // Ensure AI processor is initialized with Supabase config
+        await aiProcessor.initConfig();
+        
         const systemPrompt = "You are a rephrasing tool. Rewrite the user's text in a different style or with different vocabulary while preserving the core meaning.";
         const result = await aiProcessor.callOpenRouter(systemPrompt, text);
+        
+        // Check if result is an error message
+        if (result.startsWith('Failed to process') || result.startsWith('Error:') || result.startsWith('API Error:')) {
+            outputTextDiv.innerHTML = `<div class="error-state"><div class="error-icon">❌</div><div class="error-text">${result}</div></div>`;
+            statusDiv.textContent = 'Rephrasing failed.';
+            showNotification(result, 'error');
+            return;
+        }
 
-        outputTextDiv.textContent = result;
+        // Add fade-in animation
+        outputTextDiv.innerHTML = `<div class="fade-in">${result}</div>`;
         statusDiv.textContent = 'Rephrasing complete.';
+        showNotification('Text rephrased successfully!', 'success');
         
         // Track operation
         trackOperation('rephrase');
@@ -266,7 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
     exportBtn.addEventListener('click', () => {
         const outputText = outputTextDiv.textContent;
         if (outputText.trim() === '') {
-            alert('There is no output to export.');
+            showNotification('There is no output to export.', 'warning');
             return;
         }
 
@@ -279,46 +449,48 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        showNotification('Output exported successfully!', 'success');
     });
 
     copyBtn.addEventListener('click', () => {
         const outputText = outputTextDiv.textContent;
         if (outputText.trim() === '') {
-            alert('There is no output to copy.');
+            showNotification('There is no output to copy.', 'warning');
             return;
         }
 
         navigator.clipboard.writeText(outputText).then(() => {
             const originalText = copyBtn.textContent;
-            copyBtn.textContent = 'Copied!';
-            copyBtn.style.backgroundColor = 'var(--success-color)';
+            copyBtn.textContent = '✅ Copied!';
             setTimeout(() => {
                 copyBtn.textContent = originalText;
-                copyBtn.style.backgroundColor = '';
             }, 2000);
+            showNotification('Output copied to clipboard!', 'success');
         }).catch(err => {
             console.error('Failed to copy text: ', err);
-            alert('Failed to copy text.');
+            showNotification('Failed to copy text.', 'error');
         });
     });
 
     speakBtn.addEventListener('click', () => {
         const text = outputTextDiv.textContent || textInput.value;
         if (text.trim() === '') {
-            alert('Nothing to speak.');
+            showNotification('Nothing to speak.', 'warning');
             return;
         }
         const utterance = new SpeechSynthesisUtterance(text);
         speechSynthesis.speak(utterance);
         statusDiv.textContent = 'Speaking...';
         utterance.onend = () => {
-            statusDiv.textContent = '';
+            statusDiv.textContent = 'Speaking completed.';
         };
+        showNotification('Text to speech started.', 'info');
     });
 
     stopBtn.addEventListener('click', () => {
         speechSynthesis.cancel();
-        statusDiv.textContent = '';
+        statusDiv.textContent = 'Speaking stopped.';
+        showNotification('Text to speech stopped.', 'info');
     });
 
     // --- Admin View Logic ---
@@ -394,7 +566,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-
     // --- Legacy API Key Logic (for backward compatibility) ---
     const apiKeyForm = document.getElementById('api-key-form');
 
@@ -407,53 +578,28 @@ document.addEventListener('DOMContentLoaded', () => {
             apiKeyForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const apiKey = document.getElementById('api-key-input').value;
-                localStorage.setItem('book-tools-api-key', apiKey);
-                alert('API Key saved!');
+                const model = document.getElementById('model-input').value || 'openai/gpt-oss-20b:free';
+                
+                if (apiKey) {
+                    localStorage.setItem('book-tools-api-key', apiKey);
+                    localStorage.setItem('book-tools-model', model);
+                    alert('API Key saved successfully!');
+                    apiKeyForm.reset();
+                } else {
+                    alert('Please enter an API key.');
+                }
             });
         }
     }
 
-    function loadApiKey() {
-        const apiKey = localStorage.getItem('book-tools-api-key');
-        const apiKeyInput = document.getElementById('api-key-input');
-        if (apiKey && apiKeyInput) {
-            apiKeyInput.value = apiKey;
-        }
+    /**
+     * Sanitize user input to prevent XSS
+     * @param {string} input - User input to sanitize
+     * @returns {string} Sanitized input
+     */
+    function sanitizeInput(input) {
+        const div = document.createElement('div');
+        div.textContent = input;
+        return div.innerHTML;
     }
-
-    // --- Delete Saved Summary Logic ---
-    const summariesTableBody = document.querySelector('#summaries-table tbody');
-    if (summariesTableBody) {
-        summariesTableBody.addEventListener('click', (e) => {
-            if (e.target.classList.contains('delete-btn')) {
-                const summaryId = parseInt(e.target.dataset.id);
-                let savedSummaries = JSON.parse(localStorage.getItem('saved-summaries')) || [];
-                savedSummaries = savedSummaries.filter(s => s.id !== summaryId);
-                localStorage.setItem('saved-summaries', JSON.stringify(savedSummaries));
-                renderSummariesTable();
-            }
-        });
-    }
-
-
-    saveBtn.addEventListener('click', () => {
-        const outputText = outputTextDiv.textContent;
-        if (outputText.trim() === '') {
-            alert('There is no output to save.');
-            return;
-        }
-
-        const savedSummaries = JSON.parse(localStorage.getItem('saved-summaries')) || [];
-        const username = localStorage.getItem('username') || 'anonymous';
-
-        savedSummaries.push({
-            id: Date.now(),
-            username: username,
-            text: outputText,
-            savedAt: new Date().toLocaleString()
-        });
-
-        localStorage.setItem('saved-summaries', JSON.stringify(savedSummaries));
-        alert('Output saved successfully!');
-    });
 });

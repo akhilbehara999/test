@@ -16,10 +16,6 @@
         gap: 15px;
     }
 
-    main {
-        padding: 20px;
-    }
-
     .module-grid {
         grid-template-columns: 1fr;
     }
@@ -29,7 +25,9 @@
     }
 
     #chat-window {
-        height: 70vh;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
     }
 }
 

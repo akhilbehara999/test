@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Configuration Management - Admin Panel</title>
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --accent-color: #00d4ff;
+            --success-color: #2ec4b6;
+            --warning-color: #ff9f1c;
+            --danger-color: #e71d36;
+            --dark-color: #0a0e27;
+            --light-color: #f8f9fa;
+            --border-color: rgba(255, 255, 255, 0.2);
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --input-bg: rgba(255, 255, 255, 0.08);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .header h1 {
+            color: var(--text-color);
+            margin: 0;
+            font-size: 1.8rem;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 212, 255, 0.2);
+        }
+        
+        .back-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 212, 255, 0.3);
+        }
+        
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+            border-radius: 16px 16px 0 0;
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.5s ease;
+        }
+        
+        .card:hover::before {
+            transform: scaleX(1);
+        }
+        
+        .card h2 {
+            margin-top: 0;
+            color: var(--accent-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 15px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-color);
+            font-weight: 500;
+            font-size: 1rem;
+        }
+        
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: var(--input-bg);
+            color: var(--text-color);
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+        
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .form-row .form-group {
+            flex: 1;
+            min-width: 250px;
+        }
+        
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .btn:hover::before {
+            left: 100%;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 212, 255, 0.2);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 212, 255, 0.3);
+        }
+        
+        .btn-secondary {
+            background: var(--input-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b, #ff5252);
+            color: white;
+            box-shadow: 0 4px 12px rgba(231, 29, 54, 0.2);
+        }
+        
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #ff5252, #ff6b6b);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(231, 29, 54, 0.3);
+        }
+        
+        .configs-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .configs-table th, .configs-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .configs-table th {
+            background: rgba(0, 212, 255, 0.1);
+            color: var(--accent-color);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+        
+        .configs-table tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .status-active {
+            color: var(--success-color);
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .status-inactive {
+            color: var(--danger-color);
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .actions-cell {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .action-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .status-message {
+            padding: 15px;
+            border-radius: 12px;
+            margin: 20px 0;
+            text-align: center;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .status-success {
+            background: rgba(46, 196, 182, 0.2);
+            color: var(--success-color);
+            border: 1px solid rgba(46, 196, 182, 0.3);
+        }
+        
+        .status-error {
+            background: rgba(231, 29, 54, 0.2);
+            color: var(--danger-color);
+            border: 1px solid rgba(231, 29, 54, 0.3);
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .module-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .module-quiz {
+            background: rgba(255, 107, 53, 0.2);
+            color: #ff6b35;
+        }
+        
+        .module-code-explainer {
+            background: rgba(157, 78, 221, 0.2);
+            color: #9d4edd;
+        }
+        
+        .module-book {
+            background: rgba(95, 168, 211, 0.2);
+            color: #5fa8d3;
+        }
+        
+        .module-chatbot {
+            background: rgba(255, 190, 11, 0.2);
+            color: #ffbe0b;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 992px) {
+            .container {
+                padding: 18px;
+            }
+            
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .form-row {
+                flex-direction: column;
+            }
+            
+            .form-row .form-group {
+                min-width: 100%;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+            
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+            
+            .card h2 {
+                font-size: 1.3rem;
+            }
+            
+            .configs-table {
+                display: block;
+                overflow-x: auto;
+            }
+            
+            .configs-table th, .configs-table td {
+                padding: 12px 10px;
+                font-size: 0.9rem;
+            }
+            
+            .actions-cell {
+                justify-content: flex-end;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 12px;
+            }
+            
+            .header h1 {
+                font-size: 1.3rem;
+            }
+            
+            .card {
+                padding: 15px;
+            }
+            
+            .card h2 {
+                font-size: 1.2rem;
+            }
+            
+            .btn {
+                padding: 10px 15px;
+                font-size: 0.9rem;
+            }
+            
+            .form-group input, .form-group select, .form-group textarea {
+                padding: 10px 12px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚙️ API Configuration Management</h1>
+            <a href="admin.html" class="back-link">← Back to Admin Dashboard</a>
+        </div>
+        
+        <div class="card">
+            <h2>➕ Add/Edit API Configuration</h2>
+            <form id="api-config-form">
+                <input type="hidden" id="config-id">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="module-name">Module Name</label>
+                        <select id="module-name" required>
+                            <option value="">Select Module</option>
+                            <option value="quiz">Quiz</option>
+                            <option value="code-explainer">Code Explainer</option>
+                            <option value="book">Book Tools</option>
+                            <option value="chatbot">Chatbot</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="api-provider">API Provider</label>
+                        <select id="api-provider" required>
+                            <option value="">Select Provider</option>
+                            <option value="OpenRouter">OpenRouter</option>
+                            <option value="OpenAI">OpenAI</option>
+                            <option value="Anthropic">Anthropic</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="api-endpoint">API Endpoint</label>
+                    <input type="text" id="api-endpoint" placeholder="https://api.example.com/v1/chat/completions" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="api-key">API Key</label>
+                    <input type="password" id="api-key" placeholder="Enter your API key" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="model-name">Model Name</label>
+                    <input type="text" id="model-name" placeholder="e.g., openai/gpt-oss-20b:free" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="is-active" checked>
+                        <span class="checkmark"></span>
+                        Active Configuration
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary" id="save-btn">💾 Save Configuration</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-btn" style="display: none;">❌ Cancel</button>
+                </div>
+            </form>
+            
+            <div id="status-message" class="status-message hidden"></div>
+        </div>
+        
+        <div class="card">
+            <h2>📋 Existing Configurations</h2>
+            <div id="configs-table-container">
+                <table class="configs-table">
+                    <thead>
+                        <tr>
+                            <th>Module</th>
+                            <th>Provider</th>
+                            <th>Model</th>
+                            <th>Endpoint</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="configs-table-body">
+                        <!-- Configurations will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
+    <script src="js/api-config-supabase.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Check if user is admin
+            const userRole = localStorage.getItem('userRole');
+            if (userRole !== 'admin') {
+                document.body.innerHTML = '<div class="container"><div class="card"><h2>Access Denied</h2><p>Only administrators can access this page.</p><a href="admin.html" class="back-link">← Back to Admin Dashboard</a></div></div>';
+                return;
+            }
+            
+            // Load existing configurations
+            await loadApiConfigs();
+            
+            // Set up form submission
+            document.getElementById('api-config-form').addEventListener('submit', handleFormSubmit);
+            
+            // Set up cancel button
+            document.getElementById('cancel-btn').addEventListener('click', resetForm);
+        });
+        
+        async function loadApiConfigs() {
+            try {
+                // Load all configurations for all modules
+                const modules = ['quiz', 'code-explainer', 'book', 'chatbot'];
+                let allConfigs = [];
+                
+                for (const module of modules) {
+                    const result = await getAllApiConfigs(module);
+                    if (result.success && result.data.length > 0) {
+                        allConfigs = allConfigs.concat(result.data);
+                    }
+                }
+                
+                const tableBody = document.getElementById('configs-table-body');
+                tableBody.innerHTML = '';
+                
+                if (allConfigs.length > 0) {
+                    allConfigs.forEach(config => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td><span class="module-badge module-${config.module_name.replace(' ', '-')}">${config.module_name}</span></td>
+                            <td>${config.api_provider}</td>
+                            <td>${config.model_name}</td>
+                            <td>${config.api_endpoint.substring(0, 30)}${config.api_endpoint.length > 30 ? '...' : ''}</td>
+                            <td class="${config.is_active ? 'status-active' : 'status-inactive'}">
+                                ${config.is_active ? '✓ Active' : '✗ Inactive'}
+                            </td>
+                            <td>${new Date(config.created_at).toLocaleDateString()}</td>
+                            <td class="actions-cell">
+                                <button class="action-btn btn-secondary" onclick="editConfig('${config.id}')">✏️ Edit</button>
+                                <button class="action-btn btn-danger" onclick="deleteConfig('${config.id}')">🗑️ Delete</button>
+                            </td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                } else {
+                    tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No configurations found</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error loading configurations:', error);
+                showMessage('Error loading configurations: ' + error.message, 'error');
+            }
+        }
+        
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            
+            const configId = document.getElementById('config-id').value;
+            const moduleName = document.getElementById('module-name').value;
+            const apiProvider = document.getElementById('api-provider').value;
+            const apiEndpoint = document.getElementById('api-endpoint').value;
+            const apiKey = document.getElementById('api-key').value;
+            const modelName = document.getElementById('model-name').value;
+            const isActive = document.getElementById('is-active').checked;
+            
+            const saveBtn = document.getElementById('save-btn');
+            const originalBtnText = saveBtn.textContent;
+            saveBtn.textContent = 'Saving...';
+            saveBtn.disabled = true;
+            
+            try {
+                let result;
+                
+                if (configId) {
+                    // Update existing configuration
+                    result = await updateApiConfig(configId, {
+                        moduleName: moduleName,
+                        apiProvider: apiProvider,
+                        apiEndpoint: apiEndpoint,
+                        apiKey: apiKey,
+                        modelName: modelName,
+                        isActive: isActive
+                    });
+                } else {
+                    // Create new configuration
+                    result = await storeApiConfig({
+                        moduleName: moduleName,
+                        apiProvider: apiProvider,
+                        apiEndpoint: apiEndpoint,
+                        apiKey: apiKey,
+                        modelName: modelName,
+                        createdBy: localStorage.getItem('userId') || null
+                    });
+                }
+                
+                if (result.success) {
+                    showMessage('Configuration saved successfully!', 'success');
+                    resetForm();
+                    await loadApiConfigs();
+                } else {
+                    showMessage('Error saving configuration: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error saving configuration:', error);
+                showMessage('Error saving configuration: ' + error.message, 'error');
+            } finally {
+                saveBtn.textContent = originalBtnText;
+                saveBtn.disabled = false;
+            }
+        }
+        
+        async function editConfig(configId) {
+            try {
+                // Fetch all configurations to find the one to edit
+                const modules = ['quiz', 'code-explainer', 'book', 'chatbot'];
+                let configToEdit = null;
+                
+                for (const module of modules) {
+                    const result = await getAllApiConfigs(module);
+                    if (result.success && result.data.length > 0) {
+                        const found = result.data.find(config => config.id === configId);
+                        if (found) {
+                            configToEdit = found;
+                            break;
+                        }
+                    }
+                }
+                
+                if (configToEdit) {
+                    document.getElementById('config-id').value = configToEdit.id;
+                    document.getElementById('module-name').value = configToEdit.module_name;
+                    document.getElementById('api-provider').value = configToEdit.api_provider;
+                    document.getElementById('api-endpoint').value = configToEdit.api_endpoint;
+                    document.getElementById('model-name').value = configToEdit.model_name;
+                    document.getElementById('is-active').checked = configToEdit.is_active;
+                    
+                    // Show cancel button
+                    document.getElementById('cancel-btn').style.display = 'inline-flex';
+                    
+                    // Scroll to form
+                    document.querySelector('.card').scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    showMessage('Configuration not found', 'error');
+                }
+            } catch (error) {
+                console.error('Error loading configuration for edit:', error);
+                showMessage('Error loading configuration: ' + error.message, 'error');
+            }
+        }
+        
+        async function deleteConfig(configId) {
+            if (!confirm('Are you sure you want to delete this configuration?')) {
+                return;
+            }
+            
+            try {
+                const result = await deleteApiConfig(configId);
+                
+                if (result.success) {
+                    showMessage('Configuration deleted successfully!', 'success');
+                    await loadApiConfigs();
+                } else {
+                    showMessage('Error deleting configuration: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting configuration:', error);
+                showMessage('Error deleting configuration: ' + error.message, 'error');
+            }
+        }
+        
+        function resetForm() {
+            document.getElementById('api-config-form').reset();
+            document.getElementById('config-id').value = '';
+            document.getElementById('cancel-btn').style.display = 'none';
+        }
+        
+        function showMessage(message, type) {
+            const statusMessage = document.getElementById('status-message');
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message status-${type}`;
+            statusMessage.classList.remove('hidden');
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                statusMessage.classList.add('hidden');
+            }, 5000);
+        }
+        
+        // Make functions available globally for inline event handlers
+        window.editConfig = editConfig;
+        window.deleteConfig = deleteConfig;
+    </script>
+</body>
+</html>

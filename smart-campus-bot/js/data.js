@@ -2,325 +2,297 @@
  * @file Manages user data for the application with enhanced security.
  */
 
+// Initialize Supabase
+let supabase;
+
+// Function to initialize Supabase client
+function initSupabase() {
+    // If we already have a Supabase client, return it
+    if (supabase) return supabase;
+    
+    // Try to use the global Supabase client first
+    if (typeof window !== 'undefined' && window.supabaseClient) {
+        supabase = window.supabaseClient;
+        return supabase;
+    }
+    
+    // Check if Supabase library is available
+    if (typeof window !== 'undefined' && window.supabase) {
+        // Try to use the Supabase client from supabase.js
+        if (window.SUPABASE_URL && window.SUPABASE_KEY) {
+            try {
+                supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
+                window.supabaseClient = supabase; // Set global client to avoid duplicates
+                return supabase;
+            } catch (error) {
+                console.error('Error initializing Supabase with supabase.js credentials:', error);
+            }
+        }
+        
+        // Fallback to configuration from supabase-config.js
+        if (window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.url && window.SUPABASE_CONFIG.anonKey) {
+            try {
+                // Check if URL is valid
+                new URL(window.SUPABASE_CONFIG.url);
+                supabase = window.supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey);
+                window.supabaseClient = supabase; // Set global client to avoid duplicates
+                return supabase;
+            } catch (error) {
+                console.error('Invalid Supabase URL in configuration:', window.SUPABASE_CONFIG.url);
+                return null;
+            }
+        } else {
+            console.error('Supabase configuration not found or incomplete');
+            return null;
+        }
+    }
+    
+    console.error('Supabase client library not found');
+    return null;
+}
+
 /**
- * Initializes the user database in localStorage if it doesn't exist.
- * Populates it with default user data using secure password hashing.
+ * Initializes the user database in Supabase if it doesn't exist.
+ * This function is kept for backward compatibility but will not be used with Supabase.
  */
 async function initializeUsers() {
-    let users = JSON.parse(localStorage.getItem('users'));
-    if (!users) {
-        // Initialize with secure password hashes
-        const studentSalt = await generateSalt();
-        const adminSalt = await generateSalt();
-        const testUserSalt = await generateSalt();
-        
-        users = [
-            { 
-                id: 1, 
-                username: 'student', 
-                role: 'student', 
-                status: 'active', 
-                passwordHash: await hashPassword('password123', studentSalt),
-                salt: studentSalt,
-                lastLogin: 'N/A',
-                loginAttempts: 0,
-                lockedUntil: null
-            },
-            { 
-                id: 2, 
-                username: 'KAB', 
-                role: 'admin', 
-                status: 'active', 
-                passwordHash: await hashPassword('7013432177@akhil', adminSalt),
-                salt: adminSalt,
-                lastLogin: 'N/A',
-                loginAttempts: 0,
-                lockedUntil: null
-            },
-            { 
-                id: 3, 
-                username: 'testuser', 
-                role: 'student', 
-                status: 'suspended', 
-                passwordHash: await hashPassword('password', testUserSalt),
-                salt: testUserSalt,
-                lastLogin: '2025-08-16',
-                loginAttempts: 0,
-                lockedUntil: null
-            }
-        ];
-        
-        // Remove old password field if it exists
-        users.forEach(user => {
-            if (user.password) {
-                delete user.password;
-            }
-        });
-        
-        localStorage.setItem('users', JSON.stringify(users));
-    } else {
-        // Migrate existing users to new security model if needed
-        let needsMigration = false;
-        for (let user of users) {
-            if (user.password && !user.passwordHash) {
-                needsMigration = true;
-                break;
-            }
-        }
-        
-        if (needsMigration) {
-            users = await migrateUserPasswords(users);
-            localStorage.setItem('users', JSON.stringify(users));
-        }
-    }
-    return users;
+    // With Supabase, we don't need to initialize users in localStorage
+    // The users table should be created in Supabase directly
+    console.log('Using Supabase for user management. LocalStorage initialization skipped.');
+    return [];
 }
 
 /**
- * Migrates existing plain text passwords to secure hashes
- * @param {Array} users - Array of user objects
- * @returns {Promise<Array>} Updated users array
- */
-async function migrateUserPasswords(users) {
-    console.log('Migrating user passwords to secure hashes...');
-    
-    for (let user of users) {
-        if (user.password && !user.passwordHash) {
-            const salt = await generateSalt();
-            
-            if (user.role === 'admin' && typeof user.password === 'string' && !user.password.startsWith('-')) {
-                // Handle admin password that might already be hashed with simpleHash
-                user.passwordHash = await hashPassword(user.password, salt);
-            } else {
-                user.passwordHash = await hashPassword(user.password, salt);
-            }
-            
-            user.salt = salt;
-            user.loginAttempts = user.loginAttempts || 0;
-            user.lockedUntil = user.lockedUntil || null;
-            
-            // Remove old password field
-            delete user.password;
-        }
-    }
-    
-    return users;
-}
-
-/**
- * Retrieves all users from localStorage.
- * @returns {Array} An array of user objects.
- */
-function getUsers() {
-    return JSON.parse(localStorage.getItem('users')) || [];
-}
-
-/**
- * Updates a specific user's data in localStorage.
- * @param {number} userId The ID of the user to update.
- * @param {object} updatedData An object containing the fields to update.
- */
-function updateUser(userId, updatedData) {
-    let users = getUsers();
-    const userIndex = users.findIndex(u => u.id === userId);
-    if (userIndex > -1) {
-        users[userIndex] = { ...users[userIndex], ...updatedData };
-        localStorage.setItem('users', JSON.stringify(users));
-    }
-}
-
-/**
- * Authenticates a user with enhanced security measures
- * @param {string} username - Username to authenticate
- * @param {string} password - Password to verify
+ * Authenticates a user with Supabase
+ * @param {string} email - User email
+ * @param {string} password - User password
  * @returns {Promise<object>} Authentication result
  */
-async function authenticateUser(username, password) {
-    const users = getUsers();
-    const user = users.find(u => u.username === username);
-    
-    const result = {
-        success: false,
-        user: null,
-        message: 'Invalid credentials',
-        lockout: false
-    };
-    
-    if (!user) {
-        // Simulate timing to prevent username enumeration
-        await new Promise(resolve => setTimeout(resolve, Math.random() * 100 + 50));
-        return result;
+async function authenticateUser(email, password) {
+    // Initialize Supabase if not already done
+    const supabaseClient = initSupabase();
+    if (!supabaseClient) {
+        return {
+            success: false,
+            user: null,
+            message: 'Supabase client not initialized',
+            lockout: false
+        };
     }
     
-    // Check if account is locked
-    if (user.lockedUntil && new Date() < new Date(user.lockedUntil)) {
-        result.message = 'Account temporarily locked due to failed login attempts';
-        result.lockout = true;
-        return result;
-    }
-    
-    // Check if account is suspended
-    if (user.status === 'suspended') {
-        result.message = 'Account is suspended';
-        return result;
-    }
-    
-    // Verify password
-    let isValidPassword = false;
-    
-    if (user.passwordHash && user.salt) {
-        // New secure hash verification
-        isValidPassword = await verifyPassword(password, user.passwordHash, user.salt);
-    } else if (user.password) {
-        // Legacy password check (for migration)
-        if (user.role === 'admin') {
-            isValidPassword = simpleHash(password) === user.password;
-        } else {
-            isValidPassword = password === user.password;
-        }
-    }
-    
-    if (isValidPassword) {
-        // Successful login - reset failed attempts
-        updateUser(user.id, { 
-            loginAttempts: 0, 
-            lockedUntil: null,
-            lastLogin: new Date().toLocaleString()
+    try {
+        // Sign in with Supabase
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
         });
         
-        result.success = true;
-        result.user = { ...user, password: undefined, passwordHash: undefined, salt: undefined };
-        result.message = 'Authentication successful';
-    } else {
-        // Failed login - increment attempts
-        const newAttempts = (user.loginAttempts || 0) + 1;
-        const maxAttempts = 5;
-        const lockoutDuration = 15 * 60 * 1000; // 15 minutes
-        
-        let updateData = { loginAttempts: newAttempts };
-        
-        if (newAttempts >= maxAttempts) {
-            updateData.lockedUntil = new Date(Date.now() + lockoutDuration).toISOString();
-            result.message = `Account locked for 15 minutes after ${maxAttempts} failed attempts`;
-            result.lockout = true;
-        } else {
-            result.message = `Invalid credentials (${newAttempts}/${maxAttempts} attempts)`;
+        if (error) {
+            return {
+                success: false,
+                user: null,
+                message: error.message,
+                lockout: error.status === 401
+            };
         }
         
-        updateUser(user.id, updateData);
+        // Get user profile from users table
+        const userProfile = await getUserProfile(data.user.id);
+        
+        // Determine user role
+        let role = 'student'; // default role
+        
+        // Check if this is the admin user
+        if (email === 'akhilbehara97@gmail.com') {
+            role = 'admin';
+        } else if (userProfile?.role) {
+            role = userProfile.role;
+        }
+        
+        return {
+            success: true,
+            user: {
+                id: data.user.id,
+                email: data.user.email,
+                username: userProfile?.username || data.user.email.split('@')[0],
+                role: role
+            },
+            message: 'Authentication successful'
+        };
+    } catch (error) {
+        console.error('Authentication error:', error);
+        return {
+            success: false,
+            user: null,
+            message: 'Authentication service temporarily unavailable.',
+            lockout: false
+        };
     }
-    
-    return result;
 }
 
 /**
- * Creates a new user with secure password hashing
- * @param {object} userData - User data including username, password, role
+ * Creates a new user with Supabase
+ * @param {object} userData - User data including email, password, username
  * @returns {Promise<object>} Creation result
  */
 async function createUser(userData) {
-    const users = getUsers();
-    
-    // Check if username already exists
-    if (users.find(u => u.username === userData.username)) {
-        return { success: false, message: 'Username already exists' };
+    // Initialize Supabase if not already done
+    const supabaseClient = initSupabase();
+    if (!supabaseClient) {
+        return { success: false, message: 'Supabase client not initialized' };
     }
     
-    // Validate password strength
-    const passwordValidation = validatePasswordStrength(userData.password);
-    if (passwordValidation.score < 3) {
-        return { 
-            success: false, 
-            message: 'Password too weak', 
-            feedback: passwordValidation.feedback 
-        };
+    try {
+        // Sign up with Supabase Auth
+        const { data, error } = await supabaseClient.auth.signUp({
+            email: userData.email,
+            password: userData.password,
+            options: {
+                data: {
+                    username: userData.username,
+                    role: userData.role || 'student'
+                }
+            }
+        });
+        
+        if (error) {
+            console.error('Supabase signup error:', error);
+            return { success: false, message: error.message };
+        }
+        
+        // For Supabase, the user profile is automatically created in the users table
+        // via a trigger or we can create it manually after signup
+        // The user ID is in data.user.id if signup was successful
+        
+        if (data.user) {
+            // User created successfully
+            return { 
+                success: true, 
+                message: 'User created successfully. Please check your email for confirmation.', 
+                userId: data.user.id 
+            };
+        } else {
+            // Signup successful but no user object (email confirmation required)
+            return { 
+                success: true, 
+                message: 'Signup successful. Please check your email for confirmation.', 
+                userId: null 
+            };
+        }
+    } catch (error) {
+        console.error('Signup error:', error);
+        return { success: false, message: 'Account creation failed. Please try again.' };
     }
-    
-    // Generate secure password hash
-    const salt = await generateSalt();
-    const passwordHash = await hashPassword(userData.password, salt);
-    
-    const newUser = {
-        id: Math.max(...users.map(u => u.id), 0) + 1,
-        username: sanitizeInput(userData.username),
-        role: userData.role || 'student',
-        status: 'active',
-        passwordHash: passwordHash,
-        salt: salt,
-        lastLogin: 'N/A',
-        loginAttempts: 0,
-        lockedUntil: null
-    };
-    
-    users.push(newUser);
-    localStorage.setItem('users', JSON.stringify(users));
-    
-    return { success: true, message: 'User created successfully', userId: newUser.id };
 }
 
 /**
- * Changes a user's password with security validation
- * @param {number} userId - User ID
- * @param {string} currentPassword - Current password
- * @param {string} newPassword - New password
- * @returns {Promise<object>} Change result
+ * Creates a user profile in the users table
+ * @param {object} userProfile - User profile data
+ * @returns {Promise<object>} Creation result
  */
-async function changeUserPassword(userId, currentPassword, newPassword) {
-    const users = getUsers();
-    const user = users.find(u => u.id === userId);
+async function createUserProfile(userProfile) {
+    const supabaseClient = initSupabase();
+    if (!supabaseClient) return { success: false, message: 'Supabase client not initialized' };
     
-    if (!user) {
-        return { success: false, message: 'User not found' };
+    try {
+        const { data, error } = await supabaseClient
+            .from('users')
+            .insert([userProfile]);
+        
+        if (error) {
+            console.error('Error creating user profile:', error);
+            return { success: false, message: error.message };
+        }
+        
+        return { success: true, data };
+    } catch (error) {
+        console.error('Error creating user profile:', error);
+        return { success: false, message: 'Failed to create user profile' };
     }
-    
-    // Verify current password
-    const authResult = await authenticateUser(user.username, currentPassword);
-    if (!authResult.success) {
-        return { success: false, message: 'Current password is incorrect' };
-    }
-    
-    // Validate new password strength
-    const passwordValidation = validatePasswordStrength(newPassword);
-    if (passwordValidation.score < 3) {
-        return { 
-            success: false, 
-            message: 'New password too weak', 
-            feedback: passwordValidation.feedback 
-        };
-    }
-    
-    // Generate new secure hash
-    const salt = await generateSalt();
-    const passwordHash = await hashPassword(newPassword, salt);
-    
-    updateUser(userId, {
-        passwordHash: passwordHash,
-        salt: salt,
-        loginAttempts: 0,
-        lockedUntil: null
-    });
-    
-    return { success: true, message: 'Password changed successfully' };
 }
 
-// Initialize the user database on script load.
-// This ensures that the data is available for other scripts.
-(async () => {
+/**
+ * Gets user profile from the users table
+ * @param {string} userId - User ID
+ * @returns {Promise<object>} User profile data
+ */
+async function getUserProfile(userId) {
+    const supabaseClient = initSupabase();
+    if (!supabaseClient) return null;
+    
     try {
-        await initializeUsers();
-        console.log('User database initialized with secure password hashing');
-    } catch (error) {
-        console.error('Error initializing user database:', error);
-        // Fallback to basic initialization
-        const users = JSON.parse(localStorage.getItem('users'));
-        if (!users) {
-            console.log('Using fallback user initialization');
-            const basicUsers = [
-                { id: 1, username: 'student', role: 'student', status: 'active', password: 'password123', lastLogin: 'N/A' },
-                { id: 2, username: 'KAB', role: 'admin', status: 'active', password: simpleHash('7013432177@akhil'), lastLogin: 'N/A' },
-                { id: 3, username: 'testuser', role: 'student', status: 'suspended', password: 'password', lastLogin: '2025-08-16' }
-            ];
-            localStorage.setItem('users', JSON.stringify(basicUsers));
+        const { data, error } = await supabaseClient
+            .from('users')
+            .select('*')
+            .eq('id', userId)
+            .single();
+        
+        if (error) {
+            console.error('Error getting user profile:', error);
+            return null;
         }
+        
+        return data;
+    } catch (error) {
+        console.error('Error getting user profile:', error);
+        return null;
     }
-})();
+}
+
+/**
+ * Retrieves all users from Supabase (admin function)
+ * @returns {Promise<Array>} An array of user objects.
+ */
+async function getUsers() {
+    const supabaseClient = initSupabase();
+    if (!supabaseClient) return [];
+    
+    try {
+        const { data, error } = await supabaseClient
+            .from('users')
+            .select('*');
+        
+        if (error) {
+            console.error('Error getting users:', error);
+            return [];
+        }
+        
+        return data || [];
+    } catch (error) {
+        console.error('Error getting users:', error);
+        return [];
+    }
+}
+
+/**
+ * Updates a specific user's data in Supabase
+ * @param {string} userId The ID of the user to update.
+ * @param {object} updatedData An object containing the fields to update.
+ */
+async function updateUser(userId, updatedData) {
+    const supabaseClient = initSupabase();
+    if (!supabaseClient) return;
+    
+    try {
+        const { error } = await supabaseClient
+            .from('users')
+            .update(updatedData)
+            .eq('id', userId);
+        
+        if (error) {
+            console.error('Error updating user:', error);
+        }
+    } catch (error) {
+        console.error('Error updating user:', error);
+    }
+}
+
+// The following functions are kept for backward compatibility but may not be used with Supabase
+
+async function migrateUserPasswords(users) {
+    console.log('Password migration not needed with Supabase authentication.');
+    return users;
+}
+
+// Initialize Supabase when the script loads
+initSupabase();

@@ -155,6 +155,11 @@ function drawBarChart(canvasId, chartData, options) {
     const barSpacing = (chartWidth / values.length) * 0.4;
     const maxValue = Math.max(...values, 1);
 
+    // Cancel any existing animation for this canvas
+    if (canvas.animationFrameId) {
+        cancelAnimationFrame(canvas.animationFrameId);
+    }
+
     let animationFraction = 0;
     const animationDuration = 1000; // 1 second
     let startTime = null;
@@ -203,9 +208,9 @@ function drawBarChart(canvasId, chartData, options) {
         drawChartFrame(animationFraction);
 
         if (animationFraction < 1) {
-            requestAnimationFrame(animationLoop);
+            canvas.animationFrameId = requestAnimationFrame(animationLoop);
         }
     }
 
-    requestAnimationFrame(animationLoop);
+    canvas.animationFrameId = requestAnimationFrame(animationLoop);
 }

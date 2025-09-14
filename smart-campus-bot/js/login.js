@@ -9,10 +9,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     const loginForm = document.getElementById('login-form');
-    const usernameInput = document.getElementById('username');
+    const signupForm = document.getElementById('signup-form');
+    const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const loginMessage = document.getElementById('login-message');
-    const adminAccessBtn = document.getElementById('admin-access-btn');
+    
+    // Signup form elements
+    const signupUsernameInput = document.getElementById('signup-username');
+    const signupEmailInput = document.getElementById('signup-email');
+    const signupPasswordInput = document.getElementById('signup-password');
+    const signupConfirmPasswordInput = document.getElementById('signup-confirm-password');
+    
+    // Toggle buttons
+    const signinBtn = document.getElementById('signin-btn');
+    const signupBtn = document.getElementById('signup-btn');
 
     let failedLoginAttempts = 0;
     const maxLoginAttempts = 3;
@@ -88,17 +98,34 @@ document.addEventListener('DOMContentLoaded', () => {
         animateParticles();
     }
 
+    // Toggle between signin and signup forms
+    signinBtn.addEventListener('click', () => {
+        signinBtn.classList.add('active');
+        signupBtn.classList.remove('active');
+        loginForm.classList.add('active');
+        signupForm.classList.remove('active');
+        loginMessage.textContent = '';
+    });
+
+    signupBtn.addEventListener('click', () => {
+        signupBtn.classList.add('active');
+        signinBtn.classList.remove('active');
+        signupForm.classList.add('active');
+        loginForm.classList.remove('active');
+        loginMessage.textContent = '';
+    });
 
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         if (failedLoginAttempts >= maxLoginAttempts) {
             loginMessage.textContent = 'Too many failed login attempts. Please try again later.';
+            loginMessage.style.color = 'var(--error-color)';
             speak('Too many failed login attempts. Please try again later.');
             return;
         }
 
-        const username = usernameInput.value;
+        const email = emailInput.value;
         const password = passwordInput.value;
         
         // Show loading state
@@ -106,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loginMessage.style.color = 'var(--light-text-color)';
         
         try {
-            const authResult = await authenticateUser(username, password);
+            const authResult = await authenticateUser(email, password);
             
             if (authResult.success) {
                 loginMessage.textContent = 'Authentication successful. Redirecting...';
@@ -117,6 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('sessionToken', `token-${Date.now()}`);
                 localStorage.setItem('userRole', authResult.user.role);
                 localStorage.setItem('username', authResult.user.username);
+                localStorage.setItem('userId', authResult.user.id);
 
                 // Check for return URL parameter
                 const urlParams = new URLSearchParams(window.location.search);
@@ -147,10 +175,79 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    adminAccessBtn.addEventListener('click', () => {
-        // A simple "secret" way to fill in admin credentials
-        usernameInput.value = 'KAB';
-        passwordInput.value = '';
-        passwordInput.focus();
+    // Handle signup form submission
+    signupForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const username = signupUsernameInput.value.trim();
+        const email = signupEmailInput.value.trim();
+        const password = signupPasswordInput.value;
+        const confirmPassword = signupConfirmPasswordInput.value;
+        
+        // Reset message
+        loginMessage.textContent = '';
+        loginMessage.style.color = 'var(--light-text-color)';
+        
+        // Validation
+        if (!username || !email || !password || !confirmPassword) {
+            loginMessage.textContent = 'Please fill in all fields.';
+            loginMessage.style.color = 'var(--error-color)';
+            speak('Please fill in all fields.');
+            return;
+        }
+        
+        if (password !== confirmPassword) {
+            loginMessage.textContent = 'Passwords do not match.';
+            loginMessage.style.color = 'var(--error-color)';
+            speak('Passwords do not match.');
+            return;
+        }
+        
+        if (password.length < 6) {
+            loginMessage.textContent = 'Password must be at least 6 characters long.';
+            loginMessage.style.color = 'var(--error-color)';
+            speak('Password must be at least 6 characters long.');
+            return;
+        }
+        
+        // Show loading state
+        loginMessage.textContent = 'Creating account...';
+        
+        try {
+            const userData = {
+                username: username,
+                email: email,
+                password: password,
+                role: 'student' // Default role
+            };
+            
+            const result = await createUser(userData);
+            
+            if (result.success) {
+                loginMessage.textContent = result.message;
+                loginMessage.style.color = 'var(--success-color)';
+                speak(result.message);
+                
+                // Reset form
+                signupForm.reset();
+                
+                // If user was created immediately (no email confirmation required)
+                if (result.userId) {
+                    // Switch to signin form after a delay
+                    setTimeout(() => {
+                        signinBtn.click();
+                    }, 3000);
+                }
+            } else {
+                loginMessage.textContent = result.message;
+                loginMessage.style.color = 'var(--error-color)';
+                speak(result.message);
+            }
+        } catch (error) {
+            console.error('Signup error:', error);
+            loginMessage.textContent = 'Account creation failed. Please try again.';
+            loginMessage.style.color = 'var(--error-color)';
+            speak('Account creation failed. Please try again.');
+        }
     });
 });

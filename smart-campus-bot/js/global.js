@@ -225,3 +225,89 @@ function clearGlobalAIConfig() {
     keys.forEach(key => localStorage.removeItem(key));
     console.log('🗑️ All AI configuration cleared');
 }
+
+/**
+ * Migrates API configurations from localStorage to Supabase
+ * @returns {Promise<object>} Migration result
+ */
+async function migrateApiConfigToSupabase() {
+    try {
+        // Check if Supabase is available
+        if (typeof window === 'undefined' || !window.supabaseClient) {
+            return { success: false, error: 'Supabase client not available' };
+        }
+        
+        // Import the API config functions (they should be loaded already)
+        if (typeof getApiConfig !== 'function' || typeof storeApiConfig !== 'function') {
+            console.warn('API config functions not available, skipping migration');
+            return { success: false, error: 'API config functions not available' };
+        }
+        
+        // Get existing configuration from localStorage
+        const apiKey = localStorage.getItem('openrouter-api-key');
+        const model = localStorage.getItem('ai-model');
+        
+        // If no configuration exists in localStorage, nothing to migrate
+        if (!apiKey && !model) {
+            return { success: true, message: 'No configuration found in localStorage to migrate' };
+        }
+        
+        console.log('Found existing configuration in localStorage, migrating to Supabase...');
+        
+        // Prepare configuration data
+        const configData = {
+            moduleName: 'quiz',
+            apiProvider: 'OpenRouter',
+            apiEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
+            apiKey: apiKey,
+            modelName: model || 'openai/gpt-oss-20b:free'
+        };
+        
+        // Check if configuration already exists in Supabase
+        const existingConfig = await getApiConfig('quiz', 'OpenRouter');
+        
+        let result;
+        if (existingConfig.success) {
+            // Configuration already exists, no need to migrate
+            console.log('Configuration already exists in Supabase, skipping migration');
+            return { success: true, message: 'Configuration already exists in Supabase' };
+        } else {
+            // Create new configuration
+            console.log('Creating new configuration in Supabase...');
+            result = await storeApiConfig(configData);
+        }
+        
+        if (result.success) {
+            console.log('✅ Successfully migrated API configuration to Supabase');
+            return { 
+                success: true, 
+                message: 'Successfully migrated API configuration to Supabase',
+                data: result.data
+            };
+        } else {
+            return { 
+                success: false, 
+                error: 'Failed to store configuration in Supabase: ' + result.error 
+            };
+        }
+    } catch (error) {
+        console.error('Migration error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Run migration when the page loads (but only once)
+document.addEventListener('DOMContentLoaded', async function() {
+    // Only run migration for admin users
+    const userRole = localStorage.getItem('userRole');
+    if (userRole === 'admin') {
+        // Add a small delay to ensure all scripts are loaded
+        setTimeout(async () => {
+            try {
+                await migrateApiConfigToSupabase();
+            } catch (error) {
+                console.warn('Migration failed (this is OK if Supabase is not set up yet):', error.message);
+            }
+        }, 2000);
+    }
+});

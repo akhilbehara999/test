@@ -1,0 +1,1991 @@
+document.addEventListener('DOMContentLoaded', () => {
+    // UI Elements
+    const startScreen = document.getElementById('start-screen');
+    const quizScreen = document.getElementById('quiz-screen');
+    const resultsScreen = document.getElementById('results-screen');
+    const progressScreen = document.getElementById('progress-screen');
+    const adminView = document.getElementById('admin-view');
+
+    /**
+     * Show a notification message to the user
+     * @param {string} message - The message to display
+     * @param {string} type - The type of message ('info', 'success', 'warning', 'error')
+     */
+    function showNotification(message, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.textContent = message;
+        
+        // Add to document
+        document.body.appendChild(notification);
+        
+        // Remove after 5 seconds with fade out animation
+        setTimeout(() => {
+            notification.classList.add('fade-out');
+            // Remove element after animation completes
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 500);
+        }, 5000);
+    }
+
+    // Student Progress Elements
+    const viewProgressStartBtn = document.getElementById('view-progress-start-btn');
+    const viewProgressBtn = document.getElementById('view-progress-btn');
+    const backToQuizBtn = document.getElementById('back-to-quiz-btn');
+
+    // Quiz Configuration Elements
+    const aiQuizBtn = document.getElementById('ai-quiz-btn');
+    const topicInput = document.getElementById('quiz-topic');
+    const aiQuestionCount = document.getElementById('ai-question-count');
+    const aiDifficulty = document.getElementById('ai-difficulty');
+
+    // Quiz Interface Elements
+    const questionContainer = document.getElementById('question-container');
+    const optionsContainer = document.getElementById('options-container');
+    const currentQuestionSpan = document.getElementById('current-question');
+    const totalQuestionsSpan = document.getElementById('total-questions');
+    const progressFill = document.getElementById('progress-fill');
+    const quizModeIndicator = document.getElementById('quiz-mode-indicator');
+    
+    // Timer Elements
+    const quizTimer = document.getElementById('quiz-timer');
+    const timerMinutes = document.getElementById('timer-minutes');
+    const timerSeconds = document.getElementById('timer-seconds');
+    const timerWarning = document.getElementById('timer-warning');
+    
+    // Control Elements
+    const hintBtn = document.getElementById('hint-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const finishBtn = document.getElementById('finish-btn');
+
+    // Results Elements
+    const resultsIcon = document.getElementById('results-icon');
+    const resultsTitle = document.getElementById('results-title');
+    const resultsQuizType = document.getElementById('results-quiz-type');
+    const scoreSpan = document.getElementById('score');
+    const scorePercentage = document.getElementById('score-percentage');
+    const correctCount = document.getElementById('correct-count');
+    const incorrectCount = document.getElementById('incorrect-count');
+    const timeTaken = document.getElementById('time-taken');
+    const timeBreakdown = document.getElementById('time-breakdown');
+    const performanceContent = document.getElementById('performance-content');
+    const questionReviewContainer = document.getElementById('question-review-container');
+    const achievementsContainer = document.getElementById('achievements-container');
+    const achievementsSpan = document.getElementById('achievements');
+    const playAgainBtn = document.getElementById('play-again-btn');
+
+    // Admin Elements
+    const addQuestionForm = document.getElementById('add-question-form');
+    const questionIdInput = document.getElementById('question-id');
+    const formSubmitBtn = document.getElementById('form-submit-btn');
+    const formCancelBtn = document.getElementById('form-cancel-btn');
+
+    // AI Configuration elements
+    const aiStatusIndicator = document.getElementById('ai-status');
+
+    // Quiz State Variables
+    let questions = [];
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let isAiMode = false;
+    let isTimedMode = false;
+    let currentQuestionStartTime = 0;
+    let totalQuizStartTime = 0;
+    let timerInterval = null;
+    let timePerQuestion = 120; // 2 minutes in seconds
+    let timeRemaining = 0;
+    let questionAnswers = []; // Store detailed answer tracking
+    let currentQuizId = null;
+
+    // Data Storage
+    let localQuestions = JSON.parse(localStorage.getItem('quiz-questions')) || [];
+    
+    // Achievement System
+    const achievements = {
+        'perfect_score': { name: 'Perfect Score!', icon: '🏆', description: 'Got 100% on a quiz' },
+        'ai_explorer': { name: 'AI Explorer', icon: '🤖', description: 'Completed first AI quiz' },
+        'speed_demon': { name: 'Speed Demon', icon: '⚡', description: 'Completed quiz under time limit' },
+        'persistent': { name: 'Persistent Learner', icon: '💪', description: 'Completed 5 quizzes' },
+        'scholar': { name: 'Scholar', icon: '🎓', description: 'Maintained 80%+ average' },
+        'quiz_master': { name: 'Quiz Master', icon: '👑', description: 'Completed 20 quizzes' }
+    };
+
+    // URL Parameters and Admin View Detection
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAdminView = urlParams.get('view') === 'admin';
+    const questionsTableBody = document.querySelector('#questions-table tbody');
+
+    /**
+     * Check if user has admin authentication
+     * @returns {boolean} True if user is authenticated admin
+     */
+    function isAuthenticatedAdmin() {
+        const sessionToken = localStorage.getItem('sessionToken');
+        const userRole = localStorage.getItem('userRole');
+        return sessionToken && userRole === 'admin';
+    }
+
+    /**
+     * Redirect to admin panel with authentication check
+     */
+    function redirectToAdminPanel() {
+        if (isAuthenticatedAdmin()) {
+            window.location.href = 'quiz.html?view=admin';
+        } else {
+            // Redirect to login page with return URL
+            window.location.href = '../../index.html?returnUrl=' + encodeURIComponent('modules/quiz/quiz.html?view=admin');
+        }
+    }
+
+    /**
+     * OpenRouter AI Integration for Question Generation
+     */
+    class AIQuestionGenerator {
+        constructor() {
+            this.apiKey = '';
+            this.model = '';
+            this.baseUrl = '';
+        }
+
+        /**
+         * Initialize AI configuration from Supabase
+         */
+        async initConfig() {
+            try {
+                // Ensure Supabase is properly initialized
+                if (typeof initSupabaseClient === 'function') {
+                    // This will initialize the Supabase client if needed
+                    const supabase = initSupabaseClient();
+                    if (!supabase) {
+                        console.warn('Supabase client could not be initialized');
+                    }
+                }
+                
+                // Try to get configuration from Supabase
+                if (typeof getApiConfig === 'function') {
+                    const result = await getApiConfig('quiz', 'OpenRouter');
+                    
+                    if (result.success) {
+                        this.apiKey = result.data.api_key;
+                        this.model = result.data.model_name;
+                        this.baseUrl = result.data.api_endpoint;
+                        return true;
+                    } else {
+                        console.warn('No API configuration found in Supabase:', result.error);
+                        // Fallback to localStorage for backward compatibility
+                        this.apiKey = localStorage.getItem('openrouter-api-key') || '';
+                        this.model = localStorage.getItem('ai-model') || 'openai/gpt-oss-20b:free';
+                        this.baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+                        return false;
+                    }
+                } else {
+                    // Fallback to localStorage if Supabase functions are not available
+                    console.warn('Supabase API functions not available, using localStorage');
+                    this.apiKey = localStorage.getItem('openrouter-api-key') || '';
+                    this.model = localStorage.getItem('ai-model') || 'openai/gpt-oss-20b:free';
+                    this.baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error initializing AI config:', error);
+                // Fallback to localStorage for backward compatibility
+                this.apiKey = localStorage.getItem('openrouter-api-key') || '';
+                this.model = localStorage.getItem('ai-model') || 'openai/gpt-oss-20b:free';
+                this.baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+                return false;
+            }
+        }
+
+        /**
+         * Test AI connection and update status
+         */
+        async testConnection() {
+            // Initialize config if not already done
+            if (!this.apiKey) {
+                await this.initConfig();
+            }
+            
+            if (!this.apiKey) {
+                this.updateStatus('error', 'API key not configured');
+                return false;
+            }
+
+            try {
+                this.updateStatus('testing', 'Testing connection...');
+                const response = await this.generateQuestions('Test topic', 1);
+                
+                if (response && response.length > 0) {
+                    this.updateStatus('success', 'Connection successful!');
+                    return true;
+                } else {
+                    this.updateStatus('error', 'No response from AI');
+                    return false;
+                }
+            } catch (error) {
+                console.error('AI Test Error:', error);
+                let errorMessage = `Connection failed: ${error.message}`;
+                
+                // Provide specific guidance for OpenRouter privacy policy errors
+                if (error.message.includes('data policy') || error.message.includes('privacy')) {
+                    errorMessage += ' - Please check your OpenRouter privacy settings.';
+                }
+                
+                this.updateStatus('error', errorMessage);
+                return false;
+            }
+        }
+
+        /**
+         * Generate quiz questions using OpenRouter AI
+         * @param {string} topic - The topic for questions
+         * @param {number} count - Number of questions to generate
+         * @param {string} difficulty - Difficulty level
+         */
+        async generateQuestions(topic, count = 5, difficulty = 'medium') {
+            // Initialize config if not already done
+            if (!this.apiKey) {
+                await this.initConfig();
+            }
+            
+            if (!this.apiKey) {
+                throw new Error('OpenRouter API key not configured');
+            }
+
+            const prompt = `Generate ${count} multiple-choice quiz questions about "${topic}" with ${difficulty} difficulty level.
+
+Format each question as JSON with this exact structure:
+{
+  "question": "Question text here?",
+  "correct_answer": "Correct answer",
+  "incorrect_answers": ["Wrong answer 1", "Wrong answer 2", "Wrong answer 3"]
+}
+
+Return ONLY a JSON array of questions, no other text. Make questions educational and accurate.`;
+
+            // Implement retry logic with exponential backoff
+            const maxRetries = 3;
+            let retries = 0;
+            const baseDelay = 1000; // 1 second
+
+            while (retries <= maxRetries) {
+                try {
+                    // Update status to show retry attempt if this isn't the first attempt
+                    if (retries > 0) {
+                        this.updateStatus('testing', `Rate limit hit. Retrying... (Attempt ${retries + 1}/${maxRetries + 1})`);
+                    }
+                    
+                    const response = await fetch(this.baseUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${this.apiKey}`,
+                            'Content-Type': 'application/json',
+                            'HTTP-Referer': window.location.origin,
+                            'X-Title': 'Smart Campus Quiz Bot'
+                        },
+                        body: JSON.stringify({
+                            model: this.model,
+                            messages: [{
+                                role: 'user',
+                                content: prompt
+                            }],
+                            temperature: 0.7,
+                            max_tokens: 2000
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                        
+                        // Handle specific OpenRouter errors
+                        if (errorData.error?.message) {
+                            errorMessage = errorData.error.message;
+                            
+                            // Provide specific guidance for privacy policy errors
+                            if (errorMessage.includes('data policy') || errorMessage.includes('privacy')) {
+                                errorMessage += '\n\nPlease visit https://openrouter.ai/settings/privacy to configure your privacy settings for free models.';
+                            }
+                            
+                            // Handle rate limiting specifically
+                            if (response.status === 429) {
+                                errorMessage = 'Rate limit exceeded. Please wait a moment and try again, or check your OpenRouter account limits.';
+                                
+                                // If we haven't exceeded max retries, wait and retry
+                                if (retries < maxRetries) {
+                                    const delay = baseDelay * Math.pow(2, retries); // Exponential backoff
+                                    console.log(`Rate limit hit. Retrying in ${delay}ms... (Attempt ${retries + 1}/${maxRetries})`);
+                                    this.updateStatus('testing', `Rate limit hit. Retrying in ${delay/1000}s... (Attempt ${retries + 1}/${maxRetries + 1})`);
+                                    await new Promise(resolve => setTimeout(resolve, delay));
+                                    retries++;
+                                    continue; // Retry the request
+                                }
+                            }
+                        }
+                        
+                        throw new Error(errorMessage);
+                    }
+
+                    const data = await response.json();
+                    const aiResponse = data.choices?.[0]?.message?.content;
+                    
+                    if (!aiResponse) {
+                        throw new Error('No content in AI response');
+                    }
+
+                    // Parse the AI response
+                    let questions;
+                    try {
+                        // Remove any markdown code blocks and extra tokens
+                        let cleanResponse = aiResponse.replace(/```json\n?|```\n?/g, '').trim();
+                        // Remove extra tokens like <|start|>assistant<|channel|>final<|message|>
+                        cleanResponse = cleanResponse.replace(/<\|.*?\|>/g, '').trim();
+                        // Handle cases where the response might have extra text before or after JSON
+                        const jsonStart = cleanResponse.indexOf('[');
+                        const jsonEnd = cleanResponse.lastIndexOf(']');
+                        if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+                            cleanResponse = cleanResponse.substring(jsonStart, jsonEnd + 1);
+                        }
+                        questions = JSON.parse(cleanResponse);
+                    } catch (parseError) {
+                        console.error('Parse error:', parseError);
+                        console.log('AI Response:', aiResponse);
+                        console.log('Cleaned Response:', cleanResponse);
+                        throw new Error('Invalid JSON response from AI: ' + parseError.message);
+                    }
+
+                    // Validate and format questions
+                    const validQuestions = questions.filter(q => 
+                        q.question && 
+                        q.correct_answer && 
+                        Array.isArray(q.incorrect_answers) && 
+                        q.incorrect_answers.length >= 3
+                    ).map(q => ({
+                        ...q,
+                        id: Date.now() + Math.random(),
+                        category: 'ai-generated',
+                        type: 'multiple',
+                        difficulty: difficulty,
+                        topic: topic
+                    }));
+
+                    if (validQuestions.length === 0) {
+                        throw new Error('No valid questions generated');
+                    }
+
+                    return validQuestions;
+                } catch (error) {
+                    // If this is the last retry, throw the error
+                    if (retries >= maxRetries) {
+                        console.error('AI Generation Error:', error);
+                        throw error;
+                    }
+                    
+                    // Otherwise, increment retries and try again
+                    retries++;
+                }
+            }
+        }
+
+        /**
+         * Update AI status indicator
+         */
+        updateStatus(type, message) {
+            if (!aiStatusIndicator) return;
+            
+            aiStatusIndicator.className = `ai-status ${type}`;
+            aiStatusIndicator.textContent = message;
+            
+            const icons = {
+                'success': '✅',
+                'error': '❌', 
+                'testing': '🔄',
+                'idle': '⚪'
+            };
+            
+            aiStatusIndicator.innerHTML = `${icons[type] || ''} ${message}`;
+        }
+
+        /**
+         * Save configuration (deprecated - now handled by Supabase)
+         */
+        saveConfig(apiKey, model) {
+            console.warn('saveConfig is deprecated. Use Supabase API configuration instead.');
+        }
+    }
+
+    const aiGenerator = new AIQuestionGenerator();
+
+    // Initialize AI configuration when the page loads
+    document.addEventListener('DOMContentLoaded', async function() {
+        await aiGenerator.initConfig();
+        // Test connection after a short delay to allow UI to load
+        setTimeout(() => {
+            aiGenerator.testConnection();
+        }, 1000);
+    });
+
+    // Show model restriction notice for non-admin users
+    if (!isAdminView && !isAuthenticatedAdmin()) {
+        showModelRestrictionNotice();
+    }
+
+    /**
+     * Show model restriction notice for non-admin users
+     */
+    function showModelRestrictionNotice() {
+        const aiStatus = document.getElementById('ai-status');
+        if (aiStatus && !isAuthenticatedAdmin()) {
+            // Add restriction notice
+            const notice = document.createElement('div');
+            notice.className = 'model-restriction-notice';
+            notice.innerHTML = `
+                <span class="notice-icon">⚠️</span>
+                <span>Students are limited to free AI models only. Premium models available for admin use.</span>
+            `;
+            
+            const aiSection = document.querySelector('.ai-section');
+            if (aiSection) {
+                aiSection.appendChild(notice);
+            }
+            
+            // Update AI status to show restriction
+            aiStatus.classList.add('restricted');
+            aiStatus.innerHTML = '⚠️ Free Models Only';
+        }
+    }
+
+    /**
+     * Timer Management System
+     */
+    class QuizTimer {
+        constructor() {
+            this.timeRemaining = 0;
+            this.interval = null;
+            this.isRunning = false;
+        }
+
+        start(timeInSeconds) {
+            this.timeRemaining = timeInSeconds;
+            this.isRunning = true;
+            this.updateDisplay();
+            
+            this.interval = setInterval(() => {
+                this.timeRemaining--;
+                this.updateDisplay();
+                
+                // Warning at 30 seconds
+                if (this.timeRemaining === 30) {
+                    this.showWarning();
+                }
+                
+                // Time up
+                if (this.timeRemaining <= 0) {
+                    this.stop();
+                    this.onTimeUp();
+                }
+            }, 1000);
+        }
+
+        stop() {
+            if (this.interval) {
+                clearInterval(this.interval);
+                this.interval = null;
+            }
+            this.isRunning = false;
+            this.hideWarning();
+        }
+
+        pause() {
+            if (this.interval) {
+                clearInterval(this.interval);
+                this.interval = null;
+            }
+            this.isRunning = false;
+        }
+
+        resume() {
+            if (this.timeRemaining > 0 && !this.isRunning) {
+                this.start(this.timeRemaining);
+            }
+        }
+
+        updateDisplay() {
+            if (!timerMinutes || !timerSeconds) return;
+            
+            const minutes = Math.floor(this.timeRemaining / 60);
+            const seconds = this.timeRemaining % 60;
+            
+            timerMinutes.textContent = minutes.toString().padStart(2, '0');
+            timerSeconds.textContent = seconds.toString().padStart(2, '0');
+            
+            // Change color based on time remaining
+            if (this.timeRemaining <= 30) {
+                quizTimer.classList.add('warning');
+            } else if (this.timeRemaining <= 60) {
+                quizTimer.classList.add('caution');
+            } else {
+                quizTimer.classList.remove('warning', 'caution');
+            }
+        }
+
+        showWarning() {
+            if (timerWarning) {
+                timerWarning.style.display = 'block';
+                timerWarning.classList.add('pulse');
+            }
+        }
+
+        hideWarning() {
+            if (timerWarning) {
+                timerWarning.style.display = 'none';
+                timerWarning.classList.remove('pulse');
+            }
+        }
+
+        onTimeUp() {
+            // Auto-select random answer if no answer selected
+            if (!nextBtn || !nextBtn.style.display || nextBtn.style.display === 'none') {
+                const optionBtns = optionsContainer.querySelectorAll('.option-btn:not(:disabled)');
+                if (optionBtns.length > 0) {
+                    const randomBtn = optionBtns[Math.floor(Math.random() * optionBtns.length)];
+                    randomBtn.click();
+                }
+            }
+            
+            // Auto-advance after 2 seconds
+            setTimeout(() => {
+                if (currentQuestionIndex < questions.length - 1) {
+                    nextQuestion();
+                } else {
+                    finishQuiz();
+                }
+            }, 2000);
+        }
+
+        getElapsedTime() {
+            return timePerQuestion - this.timeRemaining;
+        }
+    }
+
+    const quizTimerNew = new QuizTimer();
+
+    /**
+     * Progress Tracking System
+     */
+    function updateQuizProgress() {
+        if (currentQuestionSpan) {
+            currentQuestionSpan.textContent = (currentQuestionIndex + 1).toString();
+        }
+        if (totalQuestionsSpan) {
+            totalQuestionsSpan.textContent = questions.length.toString();
+        }
+        if (progressFill) {
+            const progressPercent = ((currentQuestionIndex + 1) / questions.length) * 100;
+            progressFill.style.width = progressPercent + '%';
+        }
+    }
+
+    /**
+     * Student Progress Analytics
+     */
+    function getStudentProgress() {
+        const results = JSON.parse(localStorage.getItem('quiz-results')) || [];
+        const userResults = results.filter(r => r.username === (localStorage.getItem('username') || 'Anonymous'));
+        
+        const totalQuizzes = userResults.length;
+        const aiQuizzes = userResults.filter(r => r.isAiGenerated).length;
+        
+        let totalScore = 0;
+        let bestScore = 0;
+        
+        userResults.forEach(result => {
+            const [correct, total] = result.score.split(' / ').map(Number);
+            const percentage = (correct / total) * 100;
+            totalScore += percentage;
+            bestScore = Math.max(bestScore, percentage);
+        });
+        
+        const avgScore = totalQuizzes > 0 ? totalScore / totalQuizzes : 0;
+        
+        return {
+            totalQuizzes,
+            aiQuizzes,
+            avgScore,
+            bestScore,
+            recentResults: userResults.slice(-10)
+        };
+    }
+
+    /**
+     * Achievement System
+     */
+    function checkAchievements(quizData) {
+        const earnedAchievements = [];
+        const savedAchievements = JSON.parse(localStorage.getItem('earned-achievements')) || [];
+        const progress = getStudentProgress();
+        
+        // Perfect Score Achievement
+        if (quizData.percentage === 100 && !savedAchievements.includes('perfect_score')) {
+            earnedAchievements.push('perfect_score');
+        }
+        
+        // AI Explorer Achievement
+        if (quizData.isAiGenerated && !savedAchievements.includes('ai_explorer')) {
+            earnedAchievements.push('ai_explorer');
+        }
+        
+        // Speed Demon Achievement (finished with time remaining)
+        if (quizData.isTimedMode && quizData.timeRemaining > 0 && !savedAchievements.includes('speed_demon')) {
+            earnedAchievements.push('speed_demon');
+        }
+        
+        // Persistent Learner Achievement
+        if (progress.totalQuizzes >= 5 && !savedAchievements.includes('persistent')) {
+            earnedAchievements.push('persistent');
+        }
+        
+        // Scholar Achievement
+        if (progress.avgScore >= 80 && progress.totalQuizzes >= 3 && !savedAchievements.includes('scholar')) {
+            earnedAchievements.push('scholar');
+        }
+        
+        // Quiz Master Achievement
+        if (progress.totalQuizzes >= 20 && !savedAchievements.includes('quiz_master')) {
+            earnedAchievements.push('quiz_master');
+        }
+        
+        // Save new achievements
+        if (earnedAchievements.length > 0) {
+            const updatedAchievements = [...savedAchievements, ...earnedAchievements];
+            localStorage.setItem('earned-achievements', JSON.stringify(updatedAchievements));
+        }
+        
+        return earnedAchievements;
+    }
+
+    /**
+     * Enhanced Question Analytics
+     */
+    function trackQuestionPerformance(questionId, isCorrect, timeTaken) {
+        const questionStats = JSON.parse(localStorage.getItem('question-stats')) || {};
+        
+        if (!questionStats[questionId]) {
+            questionStats[questionId] = {
+                attempts: 0,
+                correct: 0,
+                totalTime: 0
+            };
+        }
+        
+        questionStats[questionId].attempts++;
+        if (isCorrect) questionStats[questionId].correct++;
+        questionStats[questionId].totalTime += timeTaken;
+        
+        localStorage.setItem('question-stats', JSON.stringify(questionStats));
+    }
+
+    // Admin View Logic
+    if (isAdminView) {
+        // Hide quiz container and show admin view
+        document.getElementById('quiz-container').style.display = 'none';
+        if (adminView) {
+            adminView.style.display = 'block';
+        }
+        
+        // Fix admin back button redirection
+        const headerBackLink = document.getElementById('header-back-link');
+        if (headerBackLink) {
+            headerBackLink.href = '../../admin.html';
+            headerBackLink.textContent = 'Back to Admin Panel';
+        }
+        
+        // Ensure URL parameters persist
+        const currentUrl = new URL(window.location);
+        if (!currentUrl.searchParams.has('view')) {
+            currentUrl.searchParams.set('view', 'admin');
+            window.history.replaceState(null, '', currentUrl.toString());
+        }
+        
+        document.querySelector('h1').textContent = 'Manage Quiz';
+        renderQuestionTable();
+        renderQuizAnalytics();
+    }
+
+    /**
+     * Enhanced Admin Analytics with Comprehensive Dashboard
+     */
+    function renderQuizAnalytics() {
+        const results = JSON.parse(localStorage.getItem('quiz-results')) || [];
+        const questionStats = JSON.parse(localStorage.getItem('question-stats')) || {};
+        const questionUsage = JSON.parse(localStorage.getItem('question-usage')) || {};
+        
+        // Overview Statistics
+        updateOverviewStats(results);
+        
+        // Performance Distribution Chart
+        renderPerformanceChart(results);
+        
+        // Difficult Questions Analysis
+        renderDifficultQuestions(questionStats, questionUsage);
+        
+        // Student Performance Insights
+        renderStudentInsights(results);
+        
+        // Recent Activity
+        renderRecentActivity(results);
+    }
+    
+    function updateOverviewStats(results) {
+        // Calculate metrics
+        let totalPercentage = 0;
+        let aiQuizCount = 0;
+        const uniqueStudents = new Set();
+        
+        results.forEach(result => {
+            totalPercentage += result.percentage || 0;
+            if (result.isAiGenerated) aiQuizCount++;
+            uniqueStudents.add(result.username);
+        });
+        
+        const averageScore = results.length > 0 ? totalPercentage / results.length : 0;
+        const aiQuestionsGenerated = localStorage.getItem('ai-questions-count') || '0';
+        
+        // Update stat cards
+        const avgScoreEl = document.getElementById('avg-score');
+        const totalQuizzesEl = document.getElementById('total-quizzes');
+        const aiQuestionsEl = document.getElementById('ai-questions-generated');
+        const activeStudentsEl = document.getElementById('active-students');
+        
+        if (avgScoreEl) avgScoreEl.textContent = `${averageScore.toFixed(1)}%`;
+        if (totalQuizzesEl) totalQuizzesEl.textContent = results.length.toString();
+        if (aiQuestionsEl) aiQuestionsEl.textContent = aiQuestionsGenerated;
+        if (activeStudentsEl) activeStudentsEl.textContent = uniqueStudents.size.toString();
+        
+        // Calculate trends (simple comparison with previous period)
+        updateTrends(results);
+    }
+    
+    function updateTrends(results) {
+        const now = new Date();
+        const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        
+        const recentResults = results.filter(r => new Date(r.date) > lastWeek);
+        const olderResults = results.filter(r => new Date(r.date) <= lastWeek);
+        
+        const recentAvg = recentResults.length > 0 ? 
+            recentResults.reduce((sum, r) => sum + (r.percentage || 0), 0) / recentResults.length : 0;
+        const olderAvg = olderResults.length > 0 ? 
+            olderResults.reduce((sum, r) => sum + (r.percentage || 0), 0) / olderResults.length : 0;
+        
+        const scoreTrend = document.getElementById('score-trend');
+        const quizTrend = document.getElementById('quiz-trend');
+        
+        if (scoreTrend) {
+            const improvement = recentAvg - olderAvg;
+            scoreTrend.textContent = improvement > 0 ? `+${improvement.toFixed(1)}%` : `${improvement.toFixed(1)}%`;
+            scoreTrend.className = `stat-trend ${improvement >= 0 ? 'positive' : 'negative'}`;
+        }
+        
+        if (quizTrend) {
+            const quizIncrease = recentResults.length - olderResults.length;
+            quizTrend.textContent = quizIncrease > 0 ? `+${quizIncrease}` : `${quizIncrease}`;
+            quizTrend.className = `stat-trend ${quizIncrease >= 0 ? 'positive' : 'negative'}`;
+        }
+    }
+    
+    function renderPerformanceChart(results) {
+        const scoreDistribution = { '0-25%': 0, '26-50%': 0, '51-75%': 0, '76-100%': 0 };
+        
+        results.forEach(result => {
+            const percentage = result.percentage || 0;
+            if (percentage <= 25) scoreDistribution['0-25%']++;
+            else if (percentage <= 50) scoreDistribution['26-50%']++;
+            else if (percentage <= 75) scoreDistribution['51-75%']++;
+            else scoreDistribution['76-100%']++;
+        });
+        
+        const chartData = {
+            labels: Object.keys(scoreDistribution),
+            values: Object.values(scoreDistribution)
+        };
+        
+        drawBarChart('quiz-analytics-chart', chartData, { barColor: '#8A2BE2' });
+    }
+    
+    function renderDifficultQuestions(questionStats, questionUsage) {
+        const difficultQuestionsList = document.getElementById('difficult-questions-list');
+        if (!difficultQuestionsList) return;
+        
+        const questionDifficulty = [];
+        
+        Object.entries(questionUsage).forEach(([questionId, usage]) => {
+            if (usage.used > 0) {
+                const successRate = (usage.correct / usage.used) * 100;
+                if (successRate < 60) {  // Questions with less than 60% success rate
+                    questionDifficulty.push({
+                        id: questionId,
+                        successRate,
+                        attempts: usage.used
+                    });
+                }
+            }
+        });
+        
+        questionDifficulty.sort((a, b) => a.successRate - b.successRate);
+        const topDifficult = questionDifficulty.slice(0, 5);
+        
+        if (topDifficult.length === 0) {
+            difficultQuestionsList.innerHTML = '<div class="no-data">No difficulty patterns identified yet.</div>';
+            return;
+        }
+        
+        const listHTML = topDifficult.map(q => `
+            <div class="analysis-item">
+                <div class="question-id">Question ID: ${q.id}</div>
+                <div class="success-rate">${q.successRate.toFixed(1)}% success rate</div>
+                <div class="attempt-count">${q.attempts} attempts</div>
+            </div>
+        `).join('');
+        
+        difficultQuestionsList.innerHTML = listHTML;
+    }
+    
+    function renderStudentInsights(results) {
+        const topPerformersList = document.getElementById('top-performers-list');
+        const strugglingStudentsList = document.getElementById('struggling-students-list');
+        const popularTopicsList = document.getElementById('popular-topics-list');
+        
+        // Top Performers
+        if (topPerformersList) {
+            const studentStats = {};
+            results.forEach(result => {
+                if (!studentStats[result.username]) {
+                    studentStats[result.username] = { total: 0, sum: 0, quizzes: 0 };
+                }
+                studentStats[result.username].sum += result.percentage || 0;
+                studentStats[result.username].quizzes++;
+            });
+            
+            const topPerformers = Object.entries(studentStats)
+                .map(([username, stats]) => ({
+                    username,
+                    average: stats.sum / stats.quizzes,
+                    quizzes: stats.quizzes
+                }))
+                .filter(student => student.quizzes >= 3)  // At least 3 quizzes
+                .sort((a, b) => b.average - a.average)
+                .slice(0, 5);
+            
+            if (topPerformers.length > 0) {
+                topPerformersList.innerHTML = topPerformers.map(student => `
+                    <div class="performer-item">
+                        <span class="student-name">${student.username}</span>
+                        <span class="student-average">${student.average.toFixed(1)}%</span>
+                    </div>
+                `).join('');
+            } else {
+                topPerformersList.innerHTML = '<div class="no-data">Not enough data yet.</div>';
+            }
+        }
+        
+        // Popular AI Topics
+        if (popularTopicsList) {
+            const topicCount = {};
+            results.filter(r => r.isAiGenerated && r.topic).forEach(result => {
+                topicCount[result.topic] = (topicCount[result.topic] || 0) + 1;
+            });
+            
+            const popularTopics = Object.entries(topicCount)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+            
+            if (popularTopics.length > 0) {
+                popularTopicsList.innerHTML = popularTopics.map(([topic, count]) => `
+                    <div class="topic-item">
+                        <span class="topic-name">${topic}</span>
+                        <span class="topic-count">${count} quizzes</span>
+                    </div>
+                `).join('');
+            } else {
+                popularTopicsList.innerHTML = '<div class="no-data">No AI quiz topics yet.</div>';
+            }
+        }
+    }
+    
+    function renderRecentActivity(results) {
+        const recentActivityList = document.getElementById('recent-activity-list');
+        if (!recentActivityList) return;
+        
+        const recentResults = results
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .slice(0, 10);
+        
+        if (recentResults.length === 0) {
+            recentActivityList.innerHTML = '<div class="no-data">No quiz activity yet.</div>';
+            return;
+        }
+        
+        const activityHTML = recentResults.map(result => {
+            const date = new Date(result.date);
+            const timeAgo = getTimeAgo(date);
+            
+            return `
+                <div class="activity-item">
+                    <div class="activity-user">${result.username}</div>
+                    <div class="activity-details">
+                        <span class="activity-type">${result.isAiGenerated ? '🤖' : '📚'}</span>
+                        <span class="activity-topic">${result.topic || 'Quiz'}</span>
+                        <span class="activity-score">${result.score}</span>
+                    </div>
+                    <div class="activity-time">${timeAgo}</div>
+                </div>
+            `;
+        }).join('');
+        
+        recentActivityList.innerHTML = activityHTML;
+    }
+    
+    function getTimeAgo(date) {
+        const now = new Date();
+        const diffInSeconds = Math.floor((now - date) / 1000);
+        
+        if (diffInSeconds < 60) return 'Just now';
+        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+        return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    }
+
+    /**
+     * Enhanced Question Bank Management
+     */
+    function renderQuestionTable() {
+        if (!questionsTableBody) return;
+        
+        // Update question bank statistics
+        updateQuestionBankStats();
+        
+        // Get filter values
+        const searchTerm = document.getElementById('question-search')?.value.toLowerCase() || '';
+        const categoryFilter = document.getElementById('question-category-filter')?.value || 'all';
+        const difficultyFilter = document.getElementById('question-difficulty-filter')?.value || 'all';
+        
+        // Filter questions
+        let filteredQuestions = localQuestions.filter(q => {
+            const matchesSearch = !searchTerm || q.question.toLowerCase().includes(searchTerm);
+            const matchesCategory = categoryFilter === 'all' || q.category === categoryFilter;
+            const matchesDifficulty = difficultyFilter === 'all' || q.difficulty === difficultyFilter;
+            
+            return matchesSearch && matchesCategory && matchesDifficulty;
+        });
+        
+        // Get question usage statistics
+        const questionUsage = JSON.parse(localStorage.getItem('question-usage')) || {};
+        
+        // Clear and populate table
+        questionsTableBody.innerHTML = '';
+        
+        if (filteredQuestions.length === 0) {
+            const row = questionsTableBody.insertRow();
+            row.innerHTML = `
+                <td colspan="6" class="no-questions">
+                    ${localQuestions.length === 0 ? 'No questions available. Add some questions to get started.' : 'No questions match the current filters.'}
+                </td>
+            `;
+            return;
+        }
+        
+        filteredQuestions.forEach(q => {
+            const usage = questionUsage[q.id] || { used: 0, correct: 0 };
+            const successRate = usage.used > 0 ? ((usage.correct / usage.used) * 100).toFixed(1) : 'N/A';
+            
+            const row = questionsTableBody.insertRow();
+            row.innerHTML = `
+                <td class="question-cell">
+                    <div class="question-text">${sanitizeInput(q.question)}</div>
+                    <div class="question-preview">
+                        <strong>Correct:</strong> ${sanitizeInput(q.correct_answer)}<br>
+                        <strong>Options:</strong> ${q.incorrect_answers.map(a => sanitizeInput(a)).join(', ')}
+                    </div>
+                </td>
+                <td class="category-cell">
+                    <span class="category-badge">${q.category || 'Custom'}</span>
+                </td>
+                <td class="difficulty-cell">
+                    <span class="difficulty-badge ${q.difficulty || 'medium'}">${q.difficulty || 'Medium'}</span>
+                </td>
+                <td class="usage-cell">
+                    <div class="usage-count">${usage.used}</div>
+                    <div class="usage-label">times used</div>
+                </td>
+                <td class="success-cell">
+                    <div class="success-rate ${usage.used > 0 ? (parseFloat(successRate) >= 70 ? 'high' : parseFloat(successRate) >= 50 ? 'medium' : 'low') : 'no-data'}">
+                        ${successRate}${successRate !== 'N/A' ? '%' : ''}
+                    </div>
+                </td>
+                <td class="actions-cell">
+                    <button class="action-btn edit-btn" data-id="${q.id}" title="Edit Question">
+                        <span class="btn-icon">✏️</span>
+                        Edit
+                    </button>
+                    <button class="action-btn delete-btn" data-id="${q.id}" title="Delete Question">
+                        <span class="btn-icon">🗑️</span>
+                        Delete
+                    </button>
+                </td>
+            `;
+        });
+    }
+    
+    function updateQuestionBankStats() {
+        const totalQuestionsEl = document.getElementById('total-questions-count');
+        const customQuestionsEl = document.getElementById('custom-questions-count');
+        const categoriesEl = document.getElementById('question-categories-count');
+        
+        if (totalQuestionsEl) {
+            totalQuestionsEl.textContent = localQuestions.length.toString();
+        }
+        
+        if (customQuestionsEl) {
+            const customQuestions = localQuestions.filter(q => q.category === 'custom').length;
+            customQuestionsEl.textContent = customQuestions.toString();
+        }
+        
+        if (categoriesEl) {
+            const categories = new Set(localQuestions.map(q => q.category || 'custom'));
+            categoriesEl.textContent = categories.size.toString();
+        }
+    }
+    
+    // Add search and filter event listeners
+    const questionSearch = document.getElementById('question-search');
+    const categoryFilter = document.getElementById('question-category-filter');
+    const difficultyFilter = document.getElementById('question-difficulty-filter');
+    
+    if (questionSearch && isAdminView) {
+        questionSearch.addEventListener('input', renderQuestionTable);
+    }
+    
+    if (categoryFilter && isAdminView) {
+        categoryFilter.addEventListener('change', renderQuestionTable);
+    }
+    
+    if (difficultyFilter && isAdminView) {
+        difficultyFilter.addEventListener('change', renderQuestionTable);
+    }
+
+    function renderQuizResults() {
+        const resultsTableBody = document.querySelector('#results-table tbody');
+        if (!resultsTableBody) return;
+        const results = JSON.parse(localStorage.getItem('quiz-results')) || [];
+        resultsTableBody.innerHTML = '';
+        results.forEach(result => {
+            const row = resultsTableBody.insertRow();
+            row.innerHTML = `
+                <td>${sanitizeInput(result.username)}</td>
+                <td>${sanitizeInput(result.score)}</td>
+                <td>${result.date}</td>
+            `;
+        });
+    }
+
+    // AI Quiz Generation
+    if (aiQuizBtn) {
+        // Add event listener for AI quiz button
+        aiQuizBtn.addEventListener('click', handleAiQuizGeneration);
+    }
+
+    /**
+     * Handle AI quiz generation
+     */
+    async function handleAiQuizGeneration() {
+        const topic = topicInput?.value?.trim();
+        if (!topic) {
+            alert('Please enter a topic for the AI quiz');
+            topicInput?.focus();
+            return;
+        }
+
+        // Check if API key is configured by initializing the AI generator
+        // Ensure Supabase client is properly initialized
+        try {
+            await aiGenerator.initConfig();
+            const apiKey = aiGenerator.apiKey;
+            if (!apiKey) {
+                // Show error modal if no API key is configured
+                showErrorModal();
+            }
+
+            await startAiQuiz(topic);
+        } catch (error) {
+            console.error('Error initializing AI config:', error);
+            showErrorModal();
+        }
+    }
+
+    /**
+     * Start AI-powered quiz
+     */
+    async function startAiQuiz(topic) {
+        try {
+            // Show loading state
+            if (aiQuizBtn) {
+                aiQuizBtn.disabled = true;
+                aiQuizBtn.innerHTML = `
+                    <span class="btn-icon">🔄</span>
+                    Generating Questions...
+                `;
+            }
+
+            aiGenerator.updateStatus('testing', 'Generating AI questions...');
+            
+            // Generate questions
+            const aiQuestions = await aiGenerator.generateQuestions(topic, 5, 'medium');
+            
+            if (aiQuestions && aiQuestions.length > 0) {
+                questions = aiQuestions;
+                score = 0;
+                currentQuestionIndex = 0;
+                isAiMode = true;
+                
+                if (startScreen) startScreen.style.display = 'none';
+                if (quizScreen) quizScreen.style.display = 'block';
+                if (resultsScreen) resultsScreen.style.display = 'none';
+                if (progressScreen) progressScreen.style.display = 'none';
+                
+                // Update quiz container with AI branding
+                const quizContainer = document.getElementById('quiz-container');
+                if (quizContainer) {
+                    quizContainer.classList.add('ai-quiz-mode');
+                }
+                
+                displayQuestion();
+                aiGenerator.updateStatus('success', `Generated ${aiQuestions.length} AI questions!`);
+            } else {
+                throw new Error('No questions were generated');
+            }
+        } catch (error) {
+            console.error('AI Quiz Error:', error);
+            
+            // Provide user-friendly error messages
+            let userMessage = 'Failed to generate AI quiz. ';
+            
+            if (error.message.includes('429') || error.message.includes('rate limit')) {
+                userMessage += 'You have hit the rate limit. Please wait a moment and try again.';
+            } else if (error.message.includes('API key')) {
+                userMessage += 'Please check your API key configuration.';
+            } else if (error.message.includes('privacy') || error.message.includes('data policy')) {
+                userMessage += 'Please check your OpenRouter privacy settings.';
+            } else if (error.message.includes('Cannot read properties of null')) {
+                userMessage += 'There was an issue with the quiz interface. Please refresh the page and try again.';
+            } else {
+                userMessage += error.message;
+            }
+            
+            aiGenerator.updateStatus('error', `Failed: ${error.message}`);
+            
+            // Use a custom notification instead of alert for better UX
+            showNotification(userMessage, 'error');
+        } finally {
+            // Reset button state only if not retrying
+            if (aiQuizBtn && !aiQuizBtn.innerHTML.includes('Retrying')) {
+                aiQuizBtn.disabled = false;
+                aiQuizBtn.innerHTML = `
+                    <span class="btn-icon">🧠</span>
+                    Generate AI Quiz
+                `;
+            }
+        }
+    }
+
+    /**
+     * Show student progress screen
+     */
+    function showStudentProgress() {
+        // Get student progress data
+        const progress = getStudentProgress();
+        
+        // Update progress stats
+        const totalQuizzesEl = document.getElementById('student-total-quizzes');
+        const avgScoreEl = document.getElementById('student-avg-score');
+        const bestScoreEl = document.getElementById('student-best-score');
+        const aiQuizzesEl = document.getElementById('student-ai-quizzes');
+        
+        if (totalQuizzesEl) totalQuizzesEl.textContent = progress.totalQuizzes;
+        if (avgScoreEl) avgScoreEl.textContent = `${Math.round(progress.avgScore)}%`;
+        if (bestScoreEl) bestScoreEl.textContent = `${Math.round(progress.bestScore)}%`;
+        if (aiQuizzesEl) aiQuizzesEl.textContent = progress.aiQuizzes;
+        
+        // Render quiz history
+        renderQuizHistory(progress.recentResults);
+        
+        // Render achievements
+        renderAchievements();
+        
+        // Show progress screen and hide others
+        if (startScreen) startScreen.style.display = 'none';
+        if (quizScreen) quizScreen.style.display = 'none';
+        if (resultsScreen) resultsScreen.style.display = 'none';
+        if (progressScreen) progressScreen.style.display = 'block';
+    }
+
+    /**
+     * Render quiz history in the progress screen
+     */
+    function renderQuizHistory(results) {
+        const historyContainer = document.getElementById('quiz-history-container');
+        if (!historyContainer) return;
+        
+        if (results.length === 0) {
+            historyContainer.innerHTML = '<p class="no-history">No quiz history available yet. Take a quiz to see your progress!</p>';
+            return;
+        }
+        
+        // Sort by date, most recent first
+        results.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        let historyHTML = '<div class="history-list">';
+        results.forEach(result => {
+            const [correct, total] = result.score.split(' / ').map(Number);
+            const percentage = Math.round((correct / total) * 100);
+            
+            historyHTML += `
+                <div class="history-item">
+                    <div class="history-header">
+                        <span class="history-date">${new Date(result.date).toLocaleDateString()}</span>
+                        <span class="history-type ${result.isAiGenerated ? 'ai' : 'offline'}">
+                            ${result.isAiGenerated ? '🤖 AI Quiz' : '📚 Offline Quiz'}
+                        </span>
+                    </div>
+                    <div class="history-content">
+                        <div class="history-topic">${result.topic || 'General Knowledge'}</div>
+                        <div class="history-score ${percentage >= 80 ? 'excellent' : percentage >= 60 ? 'good' : 'needs-improvement'}">
+                            ${result.score} (${percentage}%)
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        historyHTML += '</div>';
+        
+        historyContainer.innerHTML = historyHTML;
+    }
+
+    /**
+     * Render achievements in the progress screen
+     */
+    function renderAchievements() {
+        const achievementsContainer = document.getElementById('achievements-container');
+        if (!achievementsContainer) return;
+        
+        const earnedAchievements = JSON.parse(localStorage.getItem('earned-achievements')) || [];
+        
+        if (earnedAchievements.length === 0) {
+            achievementsContainer.innerHTML = '<p class="no-achievements">Complete quizzes to earn achievements!</p>';
+            return;
+        }
+        
+        let achievementsHTML = '<div class="achievements-grid">';
+        earnedAchievements.forEach(achId => {
+            if (achievements[achId]) {
+                const achievement = achievements[achId];
+                achievementsHTML += `
+                    <div class="achievement-item">
+                        <div class="achievement-icon">${achievement.icon}</div>
+                        <div class="achievement-info">
+                            <div class="achievement-title">${achievement.name}</div>
+                            <div class="achievement-description">${achievement.description}</div>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+        achievementsHTML += '</div>';
+        
+        achievementsContainer.innerHTML = achievementsHTML;
+    }
+
+    // Student Progress Navigation Event Listeners
+    if (viewProgressStartBtn) {
+        viewProgressStartBtn.addEventListener('click', showStudentProgress);
+    }
+    
+    if (viewProgressBtn) {
+        viewProgressBtn.addEventListener('click', showStudentProgress);
+    }
+    
+    if (backToQuizBtn) {
+        backToQuizBtn.addEventListener('click', () => {
+            if (progressScreen) progressScreen.style.display = 'none';
+            if (startScreen) startScreen.style.display = 'block';
+        });
+    }
+
+    // Enhanced Quiz Control Event Listeners
+    
+    if (nextBtn) {
+        nextBtn.addEventListener('click', nextQuestion);
+    }
+    
+    if (finishBtn) {
+        finishBtn.addEventListener('click', finishQuiz);
+    }
+    
+    if (hintBtn) {
+        hintBtn.addEventListener('click', () => {
+            // Simple hint system - highlight difficulty or show category
+            const question = questions[currentQuestionIndex];
+            alert(`Hint: This is a ${question.difficulty || 'medium'} difficulty ${question.category || 'general'} question.`);
+        });
+    }
+    
+    if (playAgainBtn) {
+        playAgainBtn.addEventListener('click', () => {
+            // Reset quiz state
+            score = 0;
+            currentQuestionIndex = 0;
+            questionAnswers = [];
+            isAiMode = false;
+            isTimedMode = false;
+            
+            // Reset timer
+            if (quizTimerNew) {
+                quizTimerNew.stop();
+            }
+            
+            // Show start screen
+            if (resultsScreen) resultsScreen.style.display = 'none';
+            if (progressScreen) progressScreen.style.display = 'none';
+            if (startScreen) startScreen.style.display = 'block';
+            
+            // Remove AI mode styling
+            const quizContainer = document.getElementById('quiz-container');
+            if (quizContainer) {
+                quizContainer.classList.remove('ai-quiz-mode');
+            }
+        });
+    }
+
+    // Admin Form Event Listeners (only in admin view)
+    if (addQuestionForm && isAdminView) {
+        addQuestionForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const questionId = parseInt(questionIdInput.value);
+            const questionData = {
+                category: 'custom',
+                type: 'multiple',
+                difficulty: 'custom',
+                question: document.getElementById('question-text').value,
+                correct_answer: document.getElementById('correct-answer').value,
+                incorrect_answers: [
+                    document.getElementById('incorrect-answer-1').value,
+                    document.getElementById('incorrect-answer-2').value,
+                    document.getElementById('incorrect-answer-3').value,
+                ]
+            };
+
+            if (questionId) {
+                // Update existing question
+                const questionIndex = localQuestions.findIndex(q => q.id === questionId);
+                if (questionIndex > -1) {
+                    localQuestions[questionIndex] = { ...localQuestions[questionIndex], ...questionData };
+                }
+            } else {
+                // Add new question
+                questionData.id = Date.now();
+                localQuestions.push(questionData);
+            }
+
+            localStorage.setItem('quiz-questions', JSON.stringify(localQuestions));
+            alert(`Question ${questionId ? 'updated' : 'added'} successfully!`);
+            resetForm();
+            renderQuestionTable();
+        });
+    }
+
+    function resetForm() {
+        if (addQuestionForm) addQuestionForm.reset();
+        if (questionIdInput) questionIdInput.value = '';
+        if (formSubmitBtn) formSubmitBtn.textContent = 'Add Question';
+        if (formCancelBtn) formCancelBtn.style.display = 'none';
+    }
+
+    if (questionsTableBody && isAdminView) {
+        questionsTableBody.addEventListener('click', (e) => {
+            const target = e.target;
+            if (target.classList.contains('action-btn')) {
+                const questionId = parseInt(target.dataset.id);
+
+                if (target.classList.contains('delete-btn')) {
+                    if (confirm('Are you sure you want to delete this question?')) {
+                        localQuestions = localQuestions.filter(q => q.id !== questionId);
+                        localStorage.setItem('quiz-questions', JSON.stringify(localQuestions));
+                        renderQuestionTable();
+                    }
+                } else if (target.classList.contains('edit-btn')) {
+                    const questionToEdit = localQuestions.find(q => q.id === questionId);
+                    if (questionToEdit) {
+                        questionIdInput.value = questionToEdit.id;
+                        document.getElementById('question-text').value = questionToEdit.question;
+                        document.getElementById('correct-answer').value = questionToEdit.correct_answer;
+                        document.getElementById('incorrect-answer-1').value = questionToEdit.incorrect_answers[0];
+                        document.getElementById('incorrect-answer-2').value = questionToEdit.incorrect_answers[1];
+                        document.getElementById('incorrect-answer-3').value = questionToEdit.incorrect_answers[2];
+
+                        formSubmitBtn.textContent = 'Update Question';
+                        formCancelBtn.style.display = 'inline-block';
+                        addQuestionForm.scrollIntoView({ behavior: 'smooth' });
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Display a question with modern styling
+     */
+    function displayQuestion() {
+        const question = questions[currentQuestionIndex];
+        currentQuestionStartTime = Date.now();
+        
+        // Update question number
+        if (currentQuestionSpan) currentQuestionSpan.textContent = currentQuestionIndex + 1;
+        if (totalQuestionsSpan) totalQuestionsSpan.textContent = questions.length;
+        
+        // Update progress bar
+        const progressPercentage = ((currentQuestionIndex + 1) / questions.length) * 100;
+        if (progressFill) progressFill.style.width = `${progressPercentage}%`;
+        
+        // Update question text
+        if (questionContainer) {
+            questionContainer.innerHTML = `
+                <div class="question-text">${question.question}</div>
+            `;
+        }
+        
+        // Clear previous options
+        if (optionsContainer) optionsContainer.innerHTML = '';
+        
+        // Create options with modern styling
+        const options = [...question.incorrect_answers, question.correct_answer]
+            .sort(() => Math.random() - 0.5);
+        
+        options.forEach((option, index) => {
+            const optionElement = document.createElement('button');
+            optionElement.className = 'option-btn';
+            optionElement.innerHTML = `
+                <span class="option-letter">${String.fromCharCode(65 + index)}</span>
+                ${option}
+            `;
+            optionElement.addEventListener('click', () => selectOption(optionElement, option, question.correct_answer));
+            if (optionsContainer) optionsContainer.appendChild(optionElement);
+        });
+        
+        // Hide all control buttons initially
+        if (hintBtn) hintBtn.style.display = 'none';
+        if (nextBtn) nextBtn.style.display = 'none';
+        if (finishBtn) finishBtn.style.display = 'none';
+        
+        // Show hint button if available
+        if (question.hint && hintBtn) {
+            hintBtn.style.display = 'flex';
+        }
+        
+        // Show next/finish button based on question position
+        if (currentQuestionIndex < questions.length - 1 && nextBtn) {
+            nextBtn.style.display = 'flex';
+        } else if (finishBtn) {
+            finishBtn.style.display = 'flex';
+        }
+        
+        // Start timer if timed mode is enabled
+        if (isTimedMode) {
+            startTimer();
+        }
+    }
+
+    /**
+     * Select an option with modern styling
+     */
+    function selectOption(optionElement, selectedOption, correctAnswer) {
+        // Remove selected class from all options
+        document.querySelectorAll('.option-btn').forEach(btn => {
+            btn.classList.remove('selected');
+        });
+        
+        // Add selected class to clicked option
+        optionElement.classList.add('selected');
+        
+        // Store answer for review
+        const isCorrect = selectedOption === correctAnswer;
+        questionAnswers[currentQuestionIndex] = {
+            question: questions[currentQuestionIndex].question,
+            selected: selectedOption,
+            correct: correctAnswer,
+            isCorrect: isCorrect,
+            timeTaken: Date.now() - currentQuestionStartTime
+        };
+        
+        // If correct, add correct class; if incorrect, add incorrect class
+        if (isCorrect) {
+            optionElement.classList.add('correct');
+            optionElement.innerHTML = `
+                <span class="option-letter">✓</span>
+                ${selectedOption}
+            `;
+        } else {
+            optionElement.classList.add('incorrect');
+            optionElement.innerHTML = `
+                <span class="option-letter">✗</span>
+                ${selectedOption}
+            `;
+            
+            // Also highlight the correct answer
+            document.querySelectorAll('.option-btn').forEach(btn => {
+                if (btn.textContent.includes(correctAnswer)) {
+                    btn.classList.add('correct');
+                    btn.innerHTML = `
+                        <span class="option-letter">✓</span>
+                        ${correctAnswer}
+                    `;
+                }
+            });
+        }
+        
+        // Disable all options after selection
+        document.querySelectorAll('.option-btn').forEach(btn => {
+            btn.disabled = true;
+        });
+    }
+
+    /**
+     * Display results with modern styling
+     */
+    function displayResults() {
+        // Calculate score
+        const correctAnswers = questionAnswers.filter(answer => answer.isCorrect).length;
+        const percentage = Math.round((correctAnswers / questions.length) * 100);
+        
+        // Update results screen elements
+        if (scoreSpan) scoreSpan.textContent = `${correctAnswers}/${questions.length}`;
+        if (scorePercentage) scorePercentage.textContent = `${percentage}%`;
+        if (correctCount) correctCount.textContent = correctAnswers;
+        if (incorrectCount) incorrectCount.textContent = questions.length - correctAnswers;
+        
+        // Set results icon and title based on performance
+        if (percentage >= 80) {
+            if (resultsIcon) resultsIcon.textContent = '🎉';
+            if (resultsTitle) resultsTitle.textContent = 'Excellent Work!';
+        } else if (percentage >= 60) {
+            if (resultsIcon) resultsIcon.textContent = '👍';
+            if (resultsTitle) resultsTitle.textContent = 'Good Job!';
+        } else {
+            if (resultsIcon) resultsIcon.textContent = '💪';
+            if (resultsTitle) resultsTitle.textContent = 'Keep Practicing!';
+        }
+        
+        // Update quiz type badge - always show AI Quiz since offline mode has been removed
+        if (resultsQuizType) resultsQuizType.textContent = '🤖 AI Quiz';
+        
+        // Calculate time taken if timed mode was enabled
+        if (isTimedMode) {
+            const totalTime = Math.round((Date.now() - totalQuizStartTime) / 1000);
+            const minutes = Math.floor(totalTime / 60);
+            const seconds = totalTime % 60;
+            if (timeTaken) timeTaken.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            if (timeBreakdown) timeBreakdown.style.display = 'flex';
+        }
+        
+        // Generate performance analysis
+        generatePerformanceAnalysis(correctAnswers, questions.length);
+        
+        // Generate question review
+        generateQuestionReview();
+        
+        // Show achievements
+        showAchievements(correctAnswers, questions.length, percentage);
+        
+        // Save quiz results to localStorage for progress tracking
+        saveQuizResult(correctAnswers, questions.length, percentage);
+        
+        // Show results screen
+        if (quizScreen) quizScreen.style.display = 'none';
+        if (resultsScreen) resultsScreen.style.display = 'block';
+        
+        // Add fade-in animation
+        resultsScreen.classList.add('fade-in');
+    }
+    
+    /**
+     * Save quiz result to localStorage for progress tracking
+     * @param {number} correctAnswers - Number of correct answers
+     * @param {number} totalQuestions - Total number of questions
+     * @param {number} percentage - Percentage score
+     */
+    function saveQuizResult(correctAnswers, totalQuestions, percentage) {
+        // Get existing results or initialize empty array
+        const results = JSON.parse(localStorage.getItem('quiz-results')) || [];
+        
+        // Create new result object
+        const newResult = {
+            id: Date.now(),
+            username: localStorage.getItem('username') || 'Anonymous',
+            score: `${correctAnswers} / ${totalQuestions}`,
+            percentage: percentage,
+            date: new Date().toISOString(),
+            isAiGenerated: isAiMode,
+            topic: document.getElementById('quiz-topic')?.value || 'General Knowledge'
+        };
+        
+        // Add new result to array
+        results.push(newResult);
+        
+        // Save updated results to localStorage
+        localStorage.setItem('quiz-results', JSON.stringify(results));
+    }
+
+    /**
+     * Generate performance analysis with modern styling
+     */
+    function generatePerformanceAnalysis(correctAnswers, totalQuestions) {
+        if (performanceContent) performanceContent.innerHTML = '';
+        
+        const performanceData = {
+            correct: correctAnswers,
+            total: totalQuestions,
+            percentage: Math.round((correctAnswers / totalQuestions) * 100),
+            timeTaken: isTimedMode ? Math.round((Date.now() - totalQuizStartTime) / 1000) : null
+        };
+        
+        const analysis = [];
+        
+        // Time analysis
+        if (isTimedMode) {
+            if (performanceData.timeTaken < 30) {
+                analysis.push('You answered quickly! Consider taking more time to read carefully.');
+            } else if (performanceData.timeTaken > 60) {
+                analysis.push('You took time to think through answers. Good strategy!');
+            }
+        }
+        
+        // Difficulty analysis
+        const hardQuestions = questionAnswers.filter(ans => ans.difficulty === 'hard');
+        const hardCorrect = hardQuestions.filter(ans => ans.isCorrect).length;
+        if (hardQuestions.length > 0) {
+            const hardPercentage = (hardCorrect / hardQuestions.length) * 100;
+            if (hardPercentage >= 70) {
+                analysis.push('Excellent performance on difficult questions!');
+            } else if (hardPercentage < 30) {
+                analysis.push('Consider reviewing challenging topics for better understanding.');
+            }
+        }
+        
+        // Category analysis
+        const categories = {};
+        questionAnswers.forEach(ans => {
+            if (!categories[ans.category]) {
+                categories[ans.category] = { total: 0, correct: 0 };
+            }
+            categories[ans.category].total++;
+            if (ans.isCorrect) categories[ans.category].correct++;
+        });
+        
+        Object.entries(categories).forEach(([category, stats]) => {
+            const catPercentage = (stats.correct / stats.total) * 100;
+            if (catPercentage === 100) {
+                analysis.push(`Perfect score in ${category}!`);
+            } else if (catPercentage < 50) {
+                analysis.push(`Consider studying more ${category} topics.`);
+            }
+        });
+        
+        if (analysis.length === 0) {
+            analysis.push('Good effort! Keep practicing to improve your skills.');
+        }
+        
+        analysis.forEach(text => {
+            const analysisItem = document.createElement('div');
+            analysisItem.className = 'analysis-item';
+            analysisItem.textContent = text;
+            if (performanceContent) performanceContent.appendChild(analysisItem);
+        });
+    }
+
+    /**
+     * Generate question review with modern styling
+     */
+    function generateQuestionReview() {
+        if (questionReviewContainer) questionReviewContainer.innerHTML = '';
+        
+        questionAnswers.forEach((answer, index) => {
+            const reviewItem = document.createElement('div');
+            reviewItem.className = `question-review-item ${answer.isCorrect ? 'correct' : 'incorrect'}`;
+            reviewItem.innerHTML = `
+                <div class="question-review-header">
+                    <span class="review-question-number">Question ${index + 1}</span>
+                    <span class="review-status ${answer.isCorrect ? 'correct' : 'incorrect'}">
+                        ${answer.isCorrect ? 'Correct' : 'Incorrect'}
+                    </span>
+                </div>
+                <div class="review-question-text">${answer.question}</div>
+                <div class="review-answer ${answer.selected === answer.correct ? 'correct' : ''} ${!answer.isCorrect ? 'user-selected incorrect' : ''}">
+                    <strong>Your answer:</strong> ${answer.selected}
+                </div>
+                ${!answer.isCorrect ? `<div class="review-answer correct">
+                    <strong>Correct answer:</strong> ${answer.correct}
+                </div>` : ''}
+            `;
+            if (questionReviewContainer) questionReviewContainer.appendChild(reviewItem);
+        });
+    }
+
+    /**
+     * Show achievements with modern styling
+     */
+    function showAchievements(correctAnswers, totalQuestions, percentage) {
+        if (!achievementsContainer) return;
+        
+        achievementsContainer.innerHTML = '';
+        
+        const earnedAchievements = checkAchievements(correctAnswers, totalQuestions, percentage);
+        
+        if (earnedAchievements.length === 0) {
+            const noAchievements = document.createElement('div');
+            noAchievements.className = 'no-achievements';
+            noAchievements.textContent = 'Complete more quizzes to earn achievements!';
+            achievementsContainer.appendChild(noAchievements);
+            return;
+        }
+        
+        earnedAchievements.forEach(achId => {
+            const achievement = achievements[achId];
+            const achievementElement = document.createElement('div');
+            achievementElement.className = 'achievement-badge new';
+            achievementElement.innerHTML = `
+                <span class="achievement-icon">${achievement.icon}</span>
+                <div class="achievement-info">
+                    <span class="achievement-title">${achievement.title}</span>
+                    <span class="achievement-description">${achievement.description}</span>
+                </div>
+            `;
+            achievementsContainer.appendChild(achievementElement);
+        });
+    }
+
+    /**
+     * Handle next question with modern styling
+     */
+    function nextQuestion() {
+        currentQuestionIndex++;
+        if (currentQuestionIndex < questions.length) {
+            displayQuestion();
+        } else {
+            finishQuiz();
+        }
+    }
+
+    /**
+     * Finish the quiz with modern styling
+     */
+    function finishQuiz() {
+        // Stop any running timer
+        if (isTimedMode) {
+            quizTimerNew.stop();
+        }
+        
+        // Calculate total time
+        const totalTime = Date.now() - totalQuizStartTime;
+        
+        // Show results
+        displayResults(totalTime);
+    }
+
+    /**
+     * Reset the quiz form with modern styling
+     */
+    function resetForm() {
+        document.getElementById('question').value = '';
+        document.getElementById('correct-answer').value = '';
+        document.getElementById('incorrect-answer-1').value = '';
+        document.getElementById('incorrect-answer-2').value = '';
+        document.getElementById('incorrect-answer-3').value = '';
+
+        formSubmitBtn.textContent = 'Add Question';
+        if (formCancelBtn) formCancelBtn.style.display = 'none';
+    }
+
+    /**
+     * Edit a question with modern styling
+     */
+    function editQuestion(questionId) {
+        const questionToEdit = localQuestions.find(q => q.id === questionId);
+        if (questionToEdit) {
+            document.getElementById('question').value = questionToEdit.question;
+            document.getElementById('correct-answer').value = questionToEdit.correct_answer;
+            document.getElementById('incorrect-answer-1').value = questionToEdit.incorrect_answers[0];
+            document.getElementById('incorrect-answer-2').value = questionToEdit.incorrect_answers[1];
+            document.getElementById('incorrect-answer-3').value = questionToEdit.incorrect_answers[2];
+
+            formSubmitBtn.textContent = 'Update Question';
+            if (formCancelBtn) formCancelBtn.style.display = 'inline-block';
+            addQuestionForm.scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+
+    if (formCancelBtn && isAdminView) {
+        formCancelBtn.addEventListener('click', resetForm);
+    }
+
+    // --- JSON Upload (Admin only) ---
+    const jsonUploadInput = document.getElementById('json-upload');
+    const uploadBtn = document.getElementById('upload-btn');
+
+    if (uploadBtn && isAdminView) {
+        uploadBtn.addEventListener('click', () => {
+            const file = jsonUploadInput?.files[0];
+            if (!file) {
+                alert('Please select a JSON file to upload.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const newQuestions = JSON.parse(event.target.result);
+
+                    // Basic validation
+                    if (!Array.isArray(newQuestions)) {
+                        throw new Error('JSON must be an array of questions.');
+                    }
+
+                    const validatedQuestions = newQuestions.filter(q => q.question && q.correct_answer && Array.isArray(q.incorrect_answers) && q.incorrect_answers.length >= 3);
+
+                    if (validatedQuestions.length !== newQuestions.length) {
+                        alert('Some questions in the file were invalid and have been skipped.');
+                    }
+
+                    validatedQuestions.forEach(q => {
+                        q.id = Date.now() + Math.random(); // Ensure unique ID
+                        q.category = 'custom';
+                        q.type = 'multiple';
+                        q.difficulty = 'custom';
+                        localQuestions.push(q);
+                    });
+
+                    localStorage.setItem('quiz-questions', JSON.stringify(localQuestions));
+                    renderQuestionTable();
+                    alert(`${validatedQuestions.length} questions uploaded successfully!`);
+                    if (jsonUploadInput) jsonUploadInput.value = ''; // Reset file input
+
+                } catch (error) {
+                    alert(`Error parsing JSON file: ${error.message}`);
+                }
+            };
+            reader.readAsText(file);
+        });
+    }
+
+    /**
+     * Show error modal with animation when API is not configured
+     */
+    function showErrorModal() {
+        const errorModal = document.getElementById('error-modal');
+        if (errorModal) {
+            errorModal.style.display = 'flex';
+            // Trigger animation after display
+            setTimeout(() => {
+                errorModal.classList.add('show');
+            }, 10);
+        }
+    }
+
+    /**
+     * Hide error modal with animation
+     */
+    function hideErrorModal() {
+        const errorModal = document.getElementById('error-modal');
+        if (errorModal) {
+            errorModal.classList.remove('show');
+            // Hide after animation completes
+            setTimeout(() => {
+                errorModal.style.display = 'none';
+            }, 300);
+        }
+    }
+
+    // Error Modal Event Listeners
+    const closeErrorBtn = document.getElementById('close-error-btn');
+    const gotoAdminBtn = document.getElementById('goto-admin-btn');
+    const errorModal = document.getElementById('error-modal');
+
+    if (closeErrorBtn) {
+        closeErrorBtn.addEventListener('click', hideErrorModal);
+    }
+
+    if (gotoAdminBtn) {
+        gotoAdminBtn.addEventListener('click', () => {
+            hideErrorModal();
+            // Check authentication before redirecting to admin panel
+            redirectToAdminPanel();
+        });
+    }
+
+    // Close modal when clicking outside the content
+    if (errorModal) {
+        errorModal.addEventListener('click', (e) => {
+            if (e.target === errorModal) {
+                hideErrorModal();
+            }
+        });
+    }
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            hideErrorModal();
+        }
+    });
+
+    /**
+     * Update UI based on current view (admin or user)
+     */
+    function updateUIForView() {
+        // This function ensures proper UI setup based on the current view
+        // Admin view setup is already handled in the isAdminView check above
+        // For user view, the default display is already set in the HTML
+        
+        // Ensure proper focus management
+        if (isAdminView) {
+            // Admin view is already set up in the isAdminView check
+            // Just ensure the correct elements are visible
+            const quizContainer = document.getElementById('quiz-container');
+            if (quizContainer) {
+                quizContainer.style.display = 'none';
+            }
+            if (adminView) {
+                adminView.style.display = 'block';
+            }
+        } else {
+            // User view - ensure the start screen is visible
+            const quizContainer = document.getElementById('quiz-container');
+            const localStartScreen = document.getElementById('start-screen');
+            if (quizContainer) {
+                quizContainer.style.display = 'block';
+            }
+            if (localStartScreen) {
+                localStartScreen.style.display = 'block';
+            }
+            if (adminView) {
+                adminView.style.display = 'none';
+            }
+        }
+    }
+
+    // Initial UI Setup
+    updateUIForView();
+
+});

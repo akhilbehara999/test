@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Book Tools - Smart Service Campus Bot</title>
     <link rel="stylesheet" href="../../css/global.css">
-    <link rel="stylesheet" href="book.css">
+    <link rel="stylesheet" href="book-modern.css">
     <link rel="stylesheet" href="../../css/responsive.css">
     <script src="https://cdn.jsdelivr.net/npm/mammoth@1.5.1/mammoth.browser.min.js"></script>
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div id="loader-wrapper">
@@ -16,7 +18,7 @@
     </div>
     <header>
         <h1>AI Book Tools</h1>
-        <a href="../../dashboard.html" class="back-link">Back to Dashboard</a>
+        <a href="../../dashboard.html" class="back-link">← Back to Dashboard</a>
     </header>
 
     <main>
@@ -25,16 +27,16 @@
                 <textarea id="text-input" placeholder="Type or paste your text here..."></textarea>
                 <div class="controls">
                     <div class="control-group">
-                        <button id="summarize-btn" title="Summarize Text">Summarize</button>
-                        <button id="expand-btn" title="Expand Text">Expand</button>
-                        <button id="rephrase-btn" title="Rephrase Text">Rephrase</button>
+                        <button id="summarize-btn" title="Summarize Text">📋 Summarize</button>
+                        <button id="expand-btn" title="Expand Text">📈 Expand</button>
+                        <button id="rephrase-btn" title="Rephrase Text">🔄 Rephrase</button>
                     </div>
                     <div class="control-group">
-                        <button id="speak-btn" title="Read Aloud">Speak</button>
-                        <button id="stop-btn" title="Stop Speaking">Stop</button>
-                        <button id="copy-btn" title="Copy to Clipboard">Copy</button>
-                        <button id="export-btn" title="Export as .txt">Export</button>
-                        <button id="save-btn" title="Save to your collection">Save</button>
+                        <button id="speak-btn" title="Read Aloud">🔊 Speak</button>
+                        <button id="stop-btn" title="Stop Speaking">⏹ Stop</button>
+                        <button id="copy-btn" title="Copy to Clipboard">📋 Copy</button>
+                        <button id="export-btn" title="Export as .txt">💾 Export</button>
+                        <button id="save-btn" title="Save to your collection">❤ Save</button>
                     </div>
                 </div>
                 <div id="status"></div>
@@ -88,6 +90,9 @@
 
     <script src="../../js/utils.js"></script>
     <script src="../../js/global.js"></script>
+    <script src="../../js/supabase-config.js"></script>
+    <script src="../../js/supabase.js"></script>
+    <script src="../../js/api-config-supabase.js"></script>
     <script src="book.js"></script>
 </body>
 </html>

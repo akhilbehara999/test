@@ -63,6 +63,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
+     * Show a notification message to the user
+     * @param {string} message - The message to display
+     * @param {string} type - The type of message ('info', 'success', 'warning', 'error')
+     */
+    function showNotification(message, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.textContent = message;
+        
+        // Add to document
+        document.body.appendChild(notification);
+        
+        // Remove after 5 seconds with fade out animation
+        setTimeout(() => {
+            notification.classList.add('fade-out');
+            // Remove element after animation completes
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 500);
+        }, 5000);
+    }
+
+    /**
      * Simple bar chart drawer for analytics
      * @param {string} canvasId - Canvas element ID
      * @param {Object} data - Chart data with labels and values
@@ -115,18 +141,69 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     class CodeAIAnalyzer {
         constructor() {
-            this.apiKey = localStorage.getItem('code-explainer-api-key') || '';
-            
-            // Allow any model - no restrictions
-            this.model = localStorage.getItem('code-explainer-model') || 'openai/gpt-oss-20b:free';
-            
-            this.baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+            this.apiKey = '';
+            this.model = '';
+            this.baseUrl = '';
+        }
+
+        /**
+         * Initialize AI configuration from Supabase
+         */
+        async initConfig() {
+            try {
+                // Ensure Supabase is properly initialized
+                if (typeof initSupabaseClient === 'function') {
+                    // This will initialize the Supabase client if needed
+                    const supabase = initSupabaseClient();
+                    if (!supabase) {
+                        console.warn('Supabase client could not be initialized');
+                    }
+                }
+                
+                // Try to get configuration from Supabase
+                if (typeof getApiConfig === 'function') {
+                    const result = await getApiConfig('code-explainer', 'OpenRouter');
+                    
+                    if (result.success) {
+                        this.apiKey = result.data.api_key;
+                        this.model = result.data.model_name;
+                        this.baseUrl = result.data.api_endpoint;
+                        return true;
+                    } else {
+                        console.warn('No API configuration found in Supabase:', result.error);
+                        // Fallback to localStorage for backward compatibility
+                        this.apiKey = localStorage.getItem('code-explainer-api-key') || '';
+                        this.model = localStorage.getItem('code-explainer-model') || 'openai/gpt-oss-20b:free';
+                        this.baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+                        return false;
+                    }
+                } else {
+                    // Fallback to localStorage if Supabase functions are not available
+                    console.warn('Supabase API functions not available, using localStorage');
+                    this.apiKey = localStorage.getItem('code-explainer-api-key') || '';
+                    this.model = localStorage.getItem('code-explainer-model') || 'openai/gpt-oss-20b:free';
+                    this.baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error initializing AI config:', error);
+                // Fallback to localStorage for backward compatibility
+                this.apiKey = localStorage.getItem('code-explainer-api-key') || '';
+                this.model = localStorage.getItem('code-explainer-model') || 'openai/gpt-oss-20b:free';
+                this.baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+                return false;
+            }
         }
 
         /**
          * Test AI connection and update status
          */
         async testConnection() {
+            // Initialize config if not already done
+            if (!this.apiKey) {
+                await this.initConfig();
+            }
+            
             if (!this.apiKey) {
                 this.updateStatus('error', 'API key not configured');
                 return false;
@@ -145,157 +222,150 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (error) {
                 console.error('AI Test Error:', error);
-                this.updateStatus('error', `Connection failed: ${error.message}`);
+                let errorMessage = `Connection failed: ${error.message}`;
+                
+                // Provide specific guidance for OpenRouter privacy policy errors
+                if (error.message.includes('data policy') || error.message.includes('privacy')) {
+                    errorMessage += ' - Please check your OpenRouter privacy settings.';
+                }
+                
+                this.updateStatus('error', errorMessage);
                 return false;
             }
         }
 
         /**
-         * Analyze code using OpenRouter AI with specific functions
-         * @param {string} code - The code to analyze
-         * @param {string} language - Programming language
-         * @param {string} mode - 'analysis', 'explanation', or 'output'
+         * Update AI status display
          */
-        async analyzeCode(code, language, mode) {
+        updateStatus(type, message) {
+            if (!aiStatus) return;
+            
+            aiStatus.className = `ai-status ${type}`;
+            
+            const icons = {
+                idle: '⚪',
+                testing: '🔄',
+                success: '✅',
+                error: '❌'
+            };
+            
+            aiStatus.innerHTML = `${icons[type] || '⚪'} ${message}`;
+        }
+
+        /**
+         * Save configuration to localStorage (deprecated - now handled by Supabase)
+         */
+        saveConfig(apiKey, model) {
+            console.warn('saveConfig is deprecated. Use Supabase API configuration instead.');
+        }
+
+        /**
+         * A reusable function to call the OpenRouter API with dynamic model
+         * @param {string} systemPrompt The system prompt to guide the AI.
+         * @param {string} userContent The user's text to be processed.
+         * @param {string} mode The mode of analysis (analysis, explanation, output).
+         * @returns {Promise<string>} The AI's response content or an error message.
+         */
+        async analyzeCode(userContent, language, mode) {
+            // Initialize config if not already done
             if (!this.apiKey) {
-                throw new Error('OpenRouter API key not configured');
+                await this.initConfig();
+            }
+            
+            if (!this.apiKey) {
+                return "Error: API Key not set. Please configure it in the admin panel.";
             }
 
-            const prompts = {
-                analysis: `As an expert ${language} code analyzer, perform a comprehensive syntax and logic check on the following code:
-
-\`\`\`${language}
-${code}
-\`\`\`
-
-Provide:
-1. **Syntax & Logic Check**: Scan for typos, missing semicolons, incorrect function names
-2. **Error Highlighting**: Pinpoint exact lines with errors and explain what's wrong
-3. **Variable & Import Validation**: Check for undefined variables or missing imports
-
-Format your response with clear sections and line numbers where applicable.`,
-
-                explanation: `As an expert ${language} teacher, provide a comprehensive step-by-step explanation of this code:
-
-\`\`\`${language}
-${code}
-\`\`\`
-
-Provide:
-1. **Step-by-Step Breakdown**: Break code into logical chunks (loops, functions, conditionals)
-2. **Algorithm Logic**: Describe the overall goal and algorithm used
-3. **Concept Highlighting**: Identify and explain key programming concepts
-
-Translate complex code into plain, easy-to-understand English. Make it educational and perfect for studying.`,
-
-                output: `As an expert ${language} code executor, analyze this code and provide execution details:
-
-\`\`\`${language}
-${code}
-\`\`\`
-
-Provide:
-1. **Direct Output**: Show the final result the code produces
-2. **Execution Trace**: Step-by-step trace of how the program runs
-3. **Variable Changes**: How variable values change over time
-4. **Input Handling**: If code requires input, use reasonable sample inputs
-
-Simulate the execution environment and show what would happen when this code runs.`
-            };
-
             try {
+                // Track AI requests
+                const currentRequests = parseInt(localStorage.getItem('code-explainer-ai-requests') || '0');
+                localStorage.setItem('code-explainer-ai-requests', (currentRequests + 1).toString());
+
+                // Mode-specific system prompts
+                let systemPrompt = "";
+                switch (mode) {
+                    case 'analysis':
+                        systemPrompt = `You are a code analysis expert. Analyze the following ${language} code for syntax errors, best practices, and potential improvements. Provide your response in a clear, structured format with bullet points.`;
+                        break;
+                    case 'explanation':
+                        systemPrompt = `You are a code explanation expert. Explain the following ${language} code step by step in a beginner-friendly way. Break down complex concepts and explain the logic flow.`;
+                        break;
+                    case 'output':
+                        systemPrompt = `You are a code execution expert. Predict the output of the following ${language} code and explain what it does. If there are any errors, explain them as well.`;
+                        break;
+                    default:
+                        systemPrompt = `You are a helpful coding assistant. Analyze the following ${language} code.`;
+                }
+
                 const response = await fetch(this.baseUrl, {
-                    method: 'POST',
+                    method: "POST",
                     headers: {
-                        'Authorization': `Bearer ${this.apiKey}`,
-                        'Content-Type': 'application/json',
-                        'HTTP-Referer': window.location.origin,
-                        'X-Title': 'Smart Campus Code Explainer'
+                      "Authorization": `Bearer ${this.apiKey}`,
+                      "Content-Type": "application/json",
+                      "HTTP-Referer": window.location.origin,
+                      "X-Title": "Smart Campus Code Explainer"
                     },
                     body: JSON.stringify({
-                        model: this.model,
-                        messages: [{
-                            role: 'user',
-                            content: prompts[mode]
-                        }],
-                        temperature: 0.7,
-                        max_tokens: 3000
+                      "model": this.model,
+                      "messages": [
+                        { "role": "system", "content": systemPrompt },
+                        { "role": "user", "content": userContent }
+                      ],
+                      "temperature": 0.7,
+                      "max_tokens": 2000
                     })
                 });
 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+                    let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                    
+                    // Handle specific OpenRouter errors
+                    if (errorData.error?.message) {
+                        errorMessage = errorData.error.message;
+                        
+                        // Provide specific guidance for privacy policy errors
+                        if (errorMessage.includes('data policy') || errorMessage.includes('privacy')) {
+                            errorMessage += '\n\nPlease visit https://openrouter.ai/settings/privacy to configure your privacy settings for free models.';
+                        }
+                    }
+                    
+                    console.error("API Error:", errorData);
+                    return `API Error: ${errorMessage}`;
                 }
 
                 const data = await response.json();
-                const aiResponse = data.choices?.[0]?.message?.content;
-                
-                if (!aiResponse) {
-                    throw new Error('No content in AI response');
-                }
+                return data.choices[0].message.content;
 
-                // Track analytics
-                this.logAnalyticsUsage(language, mode);
-                
-                return aiResponse;
             } catch (error) {
-                console.error('AI Analysis Error:', error);
-                throw error;
+                console.error("Network or fetch error:", error);
+                
+                // Provide user-friendly error messages
+                let userMessage = `Failed to generate ${mode} for your code. `;
+                
+                if (error.message.includes('429') || error.message.includes('rate limit')) {
+                    userMessage += 'The AI is busy right now. Please wait a few seconds and try again.';
+                } else if (error.message.includes('network') || error.message.includes('fetch')) {
+                    userMessage += 'Network error. Please check your internet connection and try again.';
+                } else {
+                    userMessage += 'An unexpected error occurred. Please try again later.';
+                }
+                
+                return userMessage;
             }
-        }
-
-        /**
-         * Update AI status indicator
-         */
-        updateStatus(type, message) {
-            const statusElement = aiConfigStatus || aiStatus;
-            if (!statusElement) return;
-            
-            statusElement.className = `ai-status ${type}`;
-            
-            const icons = {
-                'success': '✅',
-                'error': '❌', 
-                'testing': '🔄',
-                'idle': '🤖'
-            };
-            
-            statusElement.innerHTML = `${icons[type] || ''} ${message}`;
-        }
-
-        /**
-         * Save API configuration
-         * @param {string} apiKey - OpenRouter API key
-         * @param {string} model - AI model to use
-         */
-        saveConfig(apiKey, model) {
-            this.apiKey = apiKey;
-            this.model = model;
-            localStorage.setItem('code-explainer-api-key', apiKey);
-            localStorage.setItem('code-explainer-model', model);
-        }
-
-        /**
-         * Log analytics usage
-         */
-        logAnalyticsUsage(language, mode) {
-            // Log language usage
-            let usage = JSON.parse(localStorage.getItem('code-explainer-usage')) || {};
-            usage[language] = (usage[language] || 0) + 1;
-            localStorage.setItem('code-explainer-usage', JSON.stringify(usage));
-
-            // Log AI requests
-            const currentRequests = parseInt(localStorage.getItem('code-explainer-ai-requests') || '0');
-            localStorage.setItem('code-explainer-ai-requests', (currentRequests + 1).toString());
-
-            // Log total analyses
-            const currentAnalyses = parseInt(localStorage.getItem('code-explainer-total-analyses') || '0');
-            localStorage.setItem('code-explainer-total-analyses', (currentAnalyses + 1).toString());
         }
     }
 
     const aiAnalyzer = new CodeAIAnalyzer();
+
+    // Initialize AI configuration when the page loads
+    document.addEventListener('DOMContentLoaded', async function() {
+        await aiAnalyzer.initConfig();
+        // Test connection after a short delay to allow UI to load
+        setTimeout(() => {
+            aiAnalyzer.testConnection();
+        }, 1000);
+    });
 
     // Show model restriction notice for non-admin users
     if (!isAdminView && !isAuthenticatedAdmin()) {
@@ -306,8 +376,8 @@ Simulate the execution environment and show what would happen when this code run
      * Show model restriction notice for non-admin users
      */
     function showModelRestrictionNotice() {
-        const statusElement = aiConfigStatus || aiStatus;
-        if (statusElement && !isAuthenticatedAdmin()) {
+        const aiStatus = document.getElementById('ai-status');
+        if (aiStatus && !isAuthenticatedAdmin()) {
             // Add restriction notice
             const notice = document.createElement('div');
             notice.className = 'model-restriction-notice';
@@ -322,13 +392,13 @@ Simulate the execution environment and show what would happen when this code run
             }
             
             // Update AI status to show restriction
-            statusElement.classList.add('restricted');
-            statusElement.innerHTML = '⚠️ Free Models Only';
+            aiStatus.classList.add('restricted');
+            aiStatus.innerHTML = '⚠️ Free Models Only';
         }
     }
 
     if (isAdminView) {
-        console.log('Code Explainer: Admin view detected, initializing admin interface');
+        // Code Explainer: Admin view detected, initializing admin interface
         
         userView.style.display = 'none';
         adminView.style.display = 'block';
@@ -344,7 +414,7 @@ Simulate the execution environment and show what would happen when this code run
         
         renderAnalytics();
         
-        console.log('Code Explainer: Admin view initialization complete');
+        // Code Explainer: Admin view initialization complete
     }
 
     /**
@@ -397,7 +467,7 @@ Simulate the execution environment and show what would happen when this code run
             templates.push(newTemplate);
             localStorage.setItem('code-templates', JSON.stringify(templates));
 
-            alert('Template saved successfully!');
+            showNotification('Template saved successfully!', 'success');
             templateForm.reset();
         });
     }
@@ -406,82 +476,107 @@ Simulate the execution environment and show what would happen when this code run
      * Perform AI analysis with comprehensive error handling
      */
     async function performAnalysis(mode) {
-        console.log(`🚀 Starting ${mode} analysis...`);
+        // 🚀 Starting ${mode} analysis...
         
         const code = codeInput?.value?.trim();
         const language = languageSelect?.value;
 
-        console.log(`📝 Code length: ${code?.length || 0} characters`);
-        console.log(`🗺 Language: ${language}`);
+        // 📝 Code length: ${code?.length || 0} characters
+        // 🗺 Language: ${language}
 
         if (!code) {
-            console.warn('⚠️ No code provided for analysis');
-            alert('Please enter some code to analyze.');
+            // ⚠️ No code provided for analysis
+            showNotification('Please enter some code to analyze.', 'warning');
             codeInput?.focus();
             return;
         }
 
-        // Check if API key is configured
-        const apiKey = localStorage.getItem('code-explainer-api-key');
-        console.log(`🔑 API Key configured: ${apiKey ? '✅ Yes' : '❌ No'}`);
-        
-        if (!apiKey || apiKey.trim() === '') {
-            console.log('🚨 Showing API configuration modal');
+        // Check if API key is configured by initializing the AI analyzer
+        await aiAnalyzer.initConfig();
+        if (!aiAnalyzer.apiKey || aiAnalyzer.apiKey.trim() === '') {
+            // 🚨 Showing API configuration modal
             showErrorModal();
             return;
         }
 
         if (isProcessing) {
-            console.warn('⏳ Analysis already in progress, skipping...');
+            // ⏳ Analysis already in progress, skipping...
             return;
         }
         
         isProcessing = true;
-        console.log('🔄 Processing started');
+        // 🔄 Processing started
 
         try {
             // Update button states
             const activeBtn = mode === 'analysis' ? analyzeBtn : mode === 'explanation' ? explainBtn : outputBtn;
-            console.log(`🔘 Updating button state for: ${mode}`);
+            // 🔘 Updating button state for: ${mode}
             
             activeBtn.disabled = true;
             activeBtn.innerHTML = `<span class="btn-icon">🔄</span><div class="btn-content"><div class="btn-title">Processing...</div></div>`;
 
             // Switch to appropriate tab
             const targetTab = mode === 'analysis' ? 'analysis' : mode === 'explanation' ? 'explanation' : 'output';
-            console.log(`📋 Switching to tab: ${targetTab}`);
+            // 📋 Switching to tab: ${targetTab}
             switchTab(targetTab);
 
             // Show loading state
             const outputElement = mode === 'analysis' ? analysisOutput : mode === 'explanation' ? explanationOutput : resultOutput;
-            console.log(`📺 Output element found: ${outputElement ? '✅' : '❌'}`);
+            // 📺 Output element found: ${outputElement ? '✅' : '❌'}
             
             outputElement.innerHTML = '<div class="loading-state"><div class="loading-icon">🧠</div><div class="loading-text">AI is analyzing your code...</div></div>';
 
             // Update AI status
-            console.log('🤖 Updating AI status...');
+            // 🤖 Updating AI status...
             aiAnalyzer.updateStatus('testing', `Performing ${mode}...`);
 
             // Perform AI analysis
-            console.log('💬 Calling AI analysis...');
+            // 💬 Calling AI analysis...
             const result = await aiAnalyzer.analyzeCode(code, language, mode);
-            console.log(`✅ AI analysis completed, result length: ${result?.length || 0}`);
+            // ✅ AI analysis completed, result length: ${result?.length || 0}
+
+            // Check if result is an error message
+            if (result.startsWith('Failed to generate') || result.startsWith('Error:') || result.startsWith('API Error:')) {
+                outputElement.innerHTML = `<div class="error-state"><div class="error-icon">❌</div><div class="error-text">${result}</div></div>`;
+                aiAnalyzer.updateStatus('error', `${mode} failed`);
+                showNotification(result, 'error');
+                return;
+            }
 
             // Display results with typewriter effect
             outputElement.innerHTML = '';
-            console.log('⌨️ Starting typewriter effect...');
+            // ⌨️ Starting typewriter effect...
             await typewriterEffect(outputElement, result);
-            console.log('✅ Typewriter effect completed');
+            // ✅ Typewriter effect completed
 
             aiAnalyzer.updateStatus('success', `${mode} completed!`);
+            showNotification(`${mode.charAt(0).toUpperCase() + mode.slice(1)} completed successfully!`, 'success');
 
         } catch (error) {
-            console.error(`❌ ${mode} Error:`, error);
+            // ❌ ${mode} Error: ${error}
+            console.error(`Code ${mode} Error:`, error);
+            
+            // Provide user-friendly error messages based on the mode
+            let userMessage = `Failed to generate ${mode} for your code. `;
+            
+            if (error.message.includes('429') || error.message.includes('rate limit')) {
+                userMessage += 'The AI is busy right now. Please wait a few seconds and try again.';
+            } else if (error.message.includes('API key')) {
+                userMessage += 'Please check your API key configuration in the admin panel.';
+            } else if (error.message.includes('privacy') || error.message.includes('data policy')) {
+                userMessage += 'Please check your OpenRouter privacy settings.';
+            } else if (error.message.includes('network') || error.message.includes('fetch')) {
+                userMessage += 'Network error. Please check your internet connection and try again.';
+            } else {
+                userMessage += 'An unexpected error occurred. Please try again later.';
+            }
+            
             const outputElement = mode === 'analysis' ? analysisOutput : mode === 'explanation' ? explanationOutput : resultOutput;
-            outputElement.innerHTML = `<div class="error-state"><div class="error-icon">❌</div><div class="error-text">Error: ${error.message}</div></div>`;
+            outputElement.innerHTML = `<div class="error-state"><div class="error-icon">❌</div><div class="error-text">${userMessage}</div></div>`;
             aiAnalyzer.updateStatus('error', `${mode} failed: ${error.message}`);
+            showNotification(userMessage, 'error');
         } finally {
-            console.log('🏁 Cleaning up and resetting button states...');
+            // 🏁 Cleaning up and resetting button states...
             
             // Reset button states
             const activeBtn = mode === 'analysis' ? analyzeBtn : mode === 'explanation' ? explainBtn : outputBtn;
@@ -497,239 +592,209 @@ Simulate the execution environment and show what would happen when this code run
             activeBtn.innerHTML = `<span class="btn-icon">${config.icon}</span><div class="btn-content"><div class="btn-title">${config.title}</div><div class="btn-subtitle">${config.subtitle}</div></div>`;
             
             isProcessing = false;
-            console.log('✅ Analysis complete and cleanup finished');
+            // ✅ Analysis complete and cleanup finished
         }
     }
 
     // --- Main Analysis Functions ---
     if (analyzeBtn) {
-        console.log('✅ Code Explainer: Analyze button found and event listener attached');
+        // ✅ Code Explainer: Analyze button found and event listener attached
         analyzeBtn.addEventListener('click', async () => {
-            console.log('🔍 Code Explainer: Analyze button clicked');
+            // 🔍 Code Explainer: Analyze button clicked
             await performAnalysis('analysis');
         });
     } else {
-        console.error('❌ Code Explainer: Analyze button not found!');
+        // ❌ Code Explainer: Analyze button not found!
     }
 
     if (explainBtn) {
-        console.log('✅ Code Explainer: Explain button found and event listener attached');
+        // ✅ Code Explainer: Explain button found and event listener attached
         explainBtn.addEventListener('click', async () => {
-            console.log('🧠 Code Explainer: Explain button clicked');
+            // 🧠 Code Explainer: Explain button clicked
             await performAnalysis('explanation');
         });
     } else {
-        console.error('❌ Code Explainer: Explain button not found!');
+        // ❌ Code Explainer: Explain button not found!
     }
 
     if (outputBtn) {
-        console.log('✅ Code Explainer: Output button found and event listener attached');
+        // ✅ Code Explainer: Output button found and event listener attached
         outputBtn.addEventListener('click', async () => {
-            console.log('⚡ Code Explainer: Output button clicked');
+            // ⚡ Code Explainer: Output button clicked
             await performAnalysis('output');
         });
     } else {
-        console.error('❌ Code Explainer: Output button not found!');
+        // ❌ Code Explainer: Output button not found!
     }
 
-    // Debug: Check if all required elements are found
-    console.log('🔧 Code Explainer Debug Info:');
-    console.log('  - codeInput:', codeInput ? '✅ Found' : '❌ Missing');
-    console.log('  - languageSelect:', languageSelect ? '✅ Found' : '❌ Missing');
-    console.log('  - aiAnalyzer:', typeof aiAnalyzer !== 'undefined' ? '✅ Created' : '❌ Missing');
-    console.log('  - performAnalysis function:', typeof performAnalysis === 'function' ? '✅ Defined' : '❌ Missing');
-
-    // --- Tab Management ---
-    tabBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const targetTab = btn.dataset.tab;
-            switchTab(targetTab);
-        });
-    });
-
+    // --- Tab Switching Logic ---
     function switchTab(tabName) {
         // Update tab buttons
         tabBtns.forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.tab === tabName);
+            if (btn.dataset.tab === tabName) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
         });
 
-        // Update tab contents
+        // Update tab content
         tabContents.forEach(content => {
-            content.classList.toggle('active', content.dataset.tab === tabName);
+            if (content.dataset.tab === tabName) {
+                content.classList.add('active');
+            } else {
+                content.classList.remove('active');
+            }
         });
 
         currentActiveTab = tabName;
     }
 
+    // Add event listeners to tab buttons
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            switchTab(btn.dataset.tab);
+        });
+    });
+
     // --- Result Actions ---
     if (copyResultBtn) {
-        copyResultBtn.addEventListener('click', async () => {
-            const activeContent = document.querySelector('.tab-content.active');
-            if (activeContent && activeContent.textContent.trim()) {
-                try {
-                    await navigator.clipboard.writeText(activeContent.textContent);
-                    copyResultBtn.textContent = '✅ Copied!';
-                    setTimeout(() => {
-                        copyResultBtn.innerHTML = '📋 Copy';
-                    }, 2000);
-                } catch (err) {
-                    console.error('Failed to copy:', err);
-                }
+        copyResultBtn.addEventListener('click', () => {
+            const activeTabContent = document.querySelector('.tab-content.active');
+            if (!activeTabContent) {
+                showNotification('No content to copy.', 'warning');
+                return;
             }
+
+            const textToCopy = activeTabContent.textContent.trim();
+            if (!textToCopy) {
+                showNotification('No content to copy.', 'warning');
+                return;
+            }
+
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                showNotification('Content copied to clipboard!', 'success');
+                // Update button text temporarily
+                const originalText = copyResultBtn.innerHTML;
+                copyResultBtn.innerHTML = '✅ Copied!';
+                setTimeout(() => {
+                    copyResultBtn.innerHTML = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+                showNotification('Failed to copy content.', 'error');
+            });
         });
     }
 
     if (clearResultBtn) {
         clearResultBtn.addEventListener('click', () => {
-            tabContents.forEach(content => {
-                content.innerHTML = '<div class="empty-state"><div class="empty-icon">💻</div><div class="empty-text">Ready to analyze your code</div></div>';
-            });
+            // Clear all output areas
+            if (resultOutput) resultOutput.innerHTML = '<div class="empty-state"><div class="empty-icon">💻</div><div class="empty-text">Ready to analyze your code</div></div>';
+            if (analysisOutput) analysisOutput.innerHTML = '';
+            if (explanationOutput) explanationOutput.innerHTML = '';
+            
+            // Reset to output tab
+            switchTab('output');
+            
+            showNotification('Results cleared.', 'info');
         });
     }
 
-    // --- Character Counter ---
+    // --- Character Count ---
     if (codeInput) {
         const charCount = document.querySelector('.char-count');
-        console.log('📝 Character Counter:');
-        console.log('  - codeInput found:', codeInput ? '✅' : '❌');
-        console.log('  - charCount element found:', charCount ? '✅' : '❌');
-        
         if (charCount) {
-            // Initialize counter
-            charCount.textContent = `${codeInput.value.length} characters`;
-            
-            // Add input event listener
             codeInput.addEventListener('input', () => {
-                const length = codeInput.value.length;
-                charCount.textContent = `${length} characters`;
-                console.log(`⌨️ Character count updated: ${length}`);
+                charCount.textContent = `${codeInput.value.length} characters`;
             });
-            
-            console.log('✅ Character counter initialized successfully');
-        } else {
-            console.error('❌ Character counter element not found!');
         }
-    } else {
-        console.error('❌ Code input element not found for character counter!');
     }
 
-    /**
-     * Show error modal with animation when API is not configured
-     */
+    // --- Learning Mode Toggle ---
+    if (learningModeToggle) {
+        learningModeToggle.addEventListener('change', () => {
+            const isChecked = learningModeToggle.checked;
+            localStorage.setItem('code-explainer-learning-mode', isChecked);
+            showNotification(isChecked ? 'Learning mode enabled' : 'Learning mode disabled', 'info');
+        });
+        
+        // Load saved state
+        const savedState = localStorage.getItem('code-explainer-learning-mode') === 'true';
+        learningModeToggle.checked = savedState;
+    }
+
+    // --- Error Modal Functions ---
     function showErrorModal() {
-        const errorModal = document.getElementById('error-modal');
-        if (errorModal) {
-            errorModal.style.display = 'flex';
-            setTimeout(() => {
-                errorModal.classList.add('show');
-            }, 10);
+        const modal = document.getElementById('error-modal');
+        if (modal) {
+            modal.classList.add('active');
         }
     }
 
-    /**
-     * Hide error modal with animation
-     */
-    function hideErrorModal() {
-        const errorModal = document.getElementById('error-modal');
-        if (errorModal) {
-            errorModal.classList.remove('show');
-            setTimeout(() => {
-                errorModal.style.display = 'none';
-            }, 300);
-        }
-    }
-
-    // Error Modal Event Listeners
     const closeErrorBtn = document.getElementById('close-error-btn');
-    const gotoAdminBtn = document.getElementById('goto-admin-btn');
-    const errorModal = document.getElementById('error-modal');
-
     if (closeErrorBtn) {
-        closeErrorBtn.addEventListener('click', hideErrorModal);
-    }
-
-    if (gotoAdminBtn) {
-        gotoAdminBtn.addEventListener('click', () => {
-            hideErrorModal();
-            // Check authentication before redirecting to admin panel
-            redirectToAdminPanel();
+        closeErrorBtn.addEventListener('click', () => {
+            const modal = document.getElementById('error-modal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
         });
     }
 
+    const gotoAdminBtn = document.getElementById('goto-admin-btn');
+    if (gotoAdminBtn) {
+        gotoAdminBtn.addEventListener('click', redirectToAdminPanel);
+    }
+
+    // Close modal when clicking outside
+    const errorModal = document.getElementById('error-modal');
     if (errorModal) {
         errorModal.addEventListener('click', (e) => {
             if (e.target === errorModal) {
-                hideErrorModal();
+                errorModal.classList.remove('active');
             }
         });
     }
 
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            hideErrorModal();
-        }
-    });
-
-    /**
-     * Typewriter effect for displaying AI responses
-     */
-    async function typewriterEffect(element, text, speed = 30) {
+    // --- Typewriter Effect ---
+    async function typewriterEffect(element, text, speed = 20) {
+        if (!element) return;
+        
         element.innerHTML = '';
-        const lines = text.split('\n');
+        let i = 0;
         
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-            const lineElement = document.createElement('div');
-            element.appendChild(lineElement);
+        // Add a blinking cursor
+        element.style.borderRight = '2px solid var(--code-primary)';
+        element.style.animation = 'blink 0.7s step-end infinite';
+        
+        return new Promise(resolve => {
+            const type = () => {
+                if (i < text.length) {
+                    element.textContent += text.charAt(i);
+                    i++;
+                    setTimeout(type, speed);
+                } else {
+                    // Make cursor solid after typing is done
+                    setTimeout(() => {
+                        element.style.animation = 'none';
+                        element.style.borderRight = 'none';
+                        resolve();
+                    }, 500);
+                }
+            };
             
-            for (let j = 0; j < line.length; j++) {
-                lineElement.textContent += line[j];
-                await new Promise(resolve => setTimeout(resolve, speed));
-            }
+            type();
+        });
+    }
+
+    // Add CSS for blink animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes blink {
+            from, to { border-color: transparent; }
+            50% { border-color: var(--code-primary); }
         }
-    }
-
-    // --- Learning Mode Logic ---
-    function highlightKeywords() {
-        if (!learningModeToggle?.checked) return;
-
-        const lang = languageSelect?.value;
-        const code = codeInput?.value;
-        
-        const keywords = {
-            javascript: ['function', 'let', 'const', 'var', 'return', 'if', 'else', 'for', 'while', 'async', 'await', 'new'],
-            python: ['def', 'return', 'if', 'elif', 'else', 'for', 'while', 'import', 'from', 'class'],
-            java: ['public', 'private', 'protected', 'static', 'void', 'int', 'String', 'new', 'return', 'if', 'else', 'for'],
-            c: ['int', 'char', 'void', 'return', 'if', 'else', 'for', 'while', '#include']
-        };
-        
-        const langKeywords = keywords[lang] || [];
-        if (langKeywords.length === 0 || !code) return;
-
-        const regex = new RegExp(`\\b(${langKeywords.join('|')})\\b`, 'g');
-        const highlightedCode = sanitizeInput(code).replace(regex, '<span class="highlight-keyword">$1</span>');
-
-        resultOutput.innerHTML = highlightedCode;
-    }
-
-    if (learningModeToggle) {
-        learningModeToggle.addEventListener('change', highlightKeywords);
-    }
-    
-    if (codeInput) {
-        codeInput.addEventListener('keyup', highlightKeywords);
-    }
-
-    // Initialize AI status
-    aiAnalyzer.updateStatus('idle', 'AI Ready');
-
-    // Page initialization - ensure content is visible
-    setTimeout(() => {
-        const loaderWrapper = document.getElementById('loader-wrapper');
-        if (loaderWrapper) {
-            loaderWrapper.style.display = 'none';
-        }
-        document.body.classList.add('loaded');
-        console.log('✅ Code Explainer: Page initialization complete');
-    }, 100);
+    `;
+    document.head.appendChild(style);
 });

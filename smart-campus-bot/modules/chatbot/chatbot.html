@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chatbot - Smart Service Campus Bot</title>
     <link rel="stylesheet" href="../../css/global.css">
-    <link rel="stylesheet" href="chatbot.css">
     <link rel="stylesheet" href="../../css/responsive.css">
+    <link rel="stylesheet" href="chatbot-modern.css">
 </head>
 <body>
     <div id="loader-wrapper">
@@ -22,24 +22,36 @@
                 <label for="ai-mode-toggle" class="toggle-label"></label>
             </div>
         </div>
-        <a href="../../dashboard.html" class="back-link">Back to Dashboard</a>
+        <a href="../../dashboard.html" class="back-link">← Back to Dashboard</a>
     </header>
 
     <main>
         <div id="user-view">
+            <div class="suggestion-pills">
+                <!-- Suggestions will be loaded dynamically -->
+            </div>
             <div id="chat-window">
-                <div id="chat-messages"></div>
+                <div id="chat-messages">
+                    <div class="message bot-message">
+                        <div class="message-header">
+                            <span>🤖 AI Assistant</span>
+                        </div>
+                        <div class="message-content">
+                            Hello! I'm your campus AI assistant. How can I help you today?
+                        </div>
+                        <div class="message-timestamp">Just now</div>
+                    </div>
+                </div>
                 <div id="chat-input-container">
-                    <input type="text" id="chat-input" placeholder="Ask me anything...">
+                    <textarea id="chat-input" placeholder="Ask me anything about campus life, academics, or services..."></textarea>
                     <button id="send-btn">Send</button>
                 </div>
             </div>
         </div>
 
         <div id="admin-view" style="display: none;">
-
             <div class="admin-section">
-                <h2>Knowledge Base Management</h2>
+                <h2>🤖 Knowledge Base Management</h2>
                 <p>Add, edit, or delete the questions and answers the chatbot uses.</p>
                 <form id="train-form">
                     <input type="text" id="new-question" placeholder="Question or Keyword" required>
@@ -52,6 +64,7 @@
                             <tr>
                                 <th>Question/Keyword</th>
                                 <th>Answer</th>
+                                <th>Category</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -63,26 +76,42 @@
             </div>
 
             <div class="admin-section">
-                <h2>Upload Knowledge Document</h2>
+                <h2>📄 Upload Knowledge Document</h2>
                 <p>Upload a .txt file to suggest new Q&A pairs.</p>
                 <input type="file" id="doc-upload" accept=".txt">
             </div>
 
             <div class="admin-section">
-                <h2>Conversation Analytics</h2>
+                <h2>📊 Conversation Analytics</h2>
                 <canvas id="chatbot-analytics-chart" width="400" height="200"></canvas>
             </div>
 
             <div class="admin-section">
-                <h2>User Satisfaction</h2>
+                <h2>😊 User Satisfaction</h2>
                 <div id="satisfaction-stats">
-                    <!-- Stats will be populated here -->
+                    <div class="stat-card">
+                        <div class="stat-value">4.8</div>
+                        <div class="stat-label">Average Rating</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">1.2K</div>
+                        <div class="stat-label">Total Conversations</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">92%</div>
+                        <div class="stat-label">Positive Feedback</div>
+                    </div>
                 </div>
             </div>
-
         </div>
     </main>
 
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../js/supabase-config.js"></script>
+    <script src="../../js/supabase.js"></script>
+    <script src="../../js/api-config-supabase.js"></script>
+    <script src="chatbot-supabase.js"></script>
     <script src="../../js/utils.js"></script>
     <script src="../../js/global.js"></script>
     <script src="chatbot.js"></script>
