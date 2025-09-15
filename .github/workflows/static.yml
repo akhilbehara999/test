@@ -1,0 +1,48 @@
+name: Deploy static content to Pages (debuggable)
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show repo root (debug)
+        run: |
+          echo "=== current dir ==="
+          pwd
+          echo "=== list root ==="
+          ls -la
+          echo "=== list smart-campus-bot ==="
+          if [ -d "./smart-campus-bot" ]; then
+            ls -la ./smart-campus-bot
+          else
+            echo "FOLDER MISSING: ./smart-campus-bot does not exist"
+            exit 1
+          fi
+
+      - name: Upload smart-campus-bot folder as artifact (required by Pages)
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: ./smart-campus-bot
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v1
