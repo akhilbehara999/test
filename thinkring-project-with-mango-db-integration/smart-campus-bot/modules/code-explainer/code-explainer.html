@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Explainer - Smart Service Campus Bot</title>
+    <link rel="stylesheet" href="../../css/global.css">
+    <link rel="stylesheet" href="../../css/enhanced-dropdowns.css">
+    <link rel="stylesheet" href="code-explainer.css">
+    <link rel="stylesheet" href="../../css/responsive.css">
+</head>
+<body class="code-explainer-module">
+    <div id="loader-wrapper">
+        <div class="loader"></div>
+        <div class="loader-text">Loading Module...</div>
+    </div>
+    <header>
+        <h1>Code Explainer</h1>
+        <a href="../../dashboard.html" class="back-link">Back to Dashboard</a>
+    </header>
+
+    <main>
+        <div id="user-view">
+            <div class="explainer-container">
+                <div class="editor-toolbar">
+                    <select id="language-select">
+                        <option value="javascript">JavaScript</option>
+                        <option value="python">Python</option>
+                        <option value="java">Java</option>
+                        <option value="c">C</option>
+                        <option value="cpp">C++</option>
+                        <option value="csharp">C#</option>
+                        <option value="php">PHP</option>
+                        <option value="go">Go</option>
+                        <option value="rust">Rust</option>
+                        <option value="typescript">TypeScript</option>
+                    </select>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="learning-mode-toggle" class="toggle-checkbox">
+                        <label for="learning-mode-toggle" class="toggle-label"></label>
+                        <span>Learning Mode</span>
+                    </div>
+                </div>
+
+                <div class="code-input-section">
+                    <textarea id="code-input" placeholder="Paste your code here for comprehensive AI analysis..."></textarea>
+                    <div class="input-footer">
+                        <span class="char-count">0 characters</span>
+                        <div class="ai-status" id="ai-status">🤖 AI Ready</div>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button id="analyze-btn" class="control-btn analysis-btn">
+                        <span class="btn-icon">🔍</span>
+                        <div class="btn-content">
+                            <div class="btn-title">Analysis</div>
+                            <div class="btn-subtitle">Syntax & Error Check</div>
+                        </div>
+                    </button>
+                    <button id="explain-btn" class="control-btn explainer-btn">
+                        <span class="btn-icon">🧠</span>
+                        <div class="btn-content">
+                            <div class="btn-title">Explainer</div>
+                            <div class="btn-subtitle">Step-by-Step Breakdown</div>
+                        </div>
+                    </button>
+                    <button id="output-btn" class="control-btn output-btn">
+                        <span class="btn-icon">⚡</span>
+                        <div class="btn-content">
+                            <div class="btn-title">Output</div>
+                            <div class="btn-subtitle">Direct Program Output</div>
+                        </div>
+                    </button>
+                </div>
+
+                <div id="result-container">
+                    <div class="result-header">
+                        <div class="result-tabs">
+                            <button class="tab-btn active" data-tab="output">Result</button>
+                            <button class="tab-btn" data-tab="analysis">Analysis</button>
+                            <button class="tab-btn" data-tab="explanation">Explanation</button>
+                        </div>
+                        <div class="result-actions">
+                            <button id="copy-result-btn" class="action-btn">📋 Copy</button>
+                            <button id="clear-result-btn" class="action-btn">🗑️ Clear</button>
+                        </div>
+                    </div>
+                    <div class="result-content">
+                        <div id="result-output" class="tab-content active" data-tab="output">
+                            <div class="empty-state">
+                                <div class="empty-icon">💻</div>
+                                <div class="empty-text">Ready to analyze your code</div>
+                            </div>
+                        </div>
+                        <div id="analysis-output" class="tab-content" data-tab="analysis"></div>
+                        <div id="explanation-output" class="tab-content" data-tab="explanation"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="admin-view" style="display: none;">
+            <div class="admin-section">
+                <h2>Upload Code Template</h2>
+                <form id="template-form">
+                    <input type="text" id="template-title" placeholder="Template Title (e.g., 'Hello World')" required>
+                    <select id="template-language" required>
+                        <option value="javascript">JavaScript</option>
+                        <option value="python">Python</option>
+                        <option value="java">Java</option>
+                        <option value="c">C</option>
+                        <option value="cpp">C++</option>
+                        <option value="csharp">C#</option>
+                        <option value="php">PHP</option>
+                        <option value="go">Go</option>
+                        <option value="rust">Rust</option>
+                        <option value="typescript">TypeScript</option>
+                    </select>
+                    <textarea id="template-code" placeholder="Paste the template code here..." required></textarea>
+                    <button type="submit">Save Template</button>
+                </form>
+            </div>
+
+            <div class="admin-section">
+                <h2>📊 Code Analysis Analytics</h2>
+                <div class="analytics-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-analysis">0</div>
+                        <div class="stat-label">Total Analyses</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="popular-language">JavaScript</div>
+                        <div class="stat-label">Most Popular Language</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="ai-requests">0</div>
+                        <div class="stat-label">AI Requests Made</div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="language-chart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Modal for API Configuration -->
+        <div id="error-modal" class="error-modal">
+            <div class="error-content">
+                <div class="error-icon">🚨</div>
+                <div class="error-title">API Configuration Required</div>
+                <div class="error-message">
+                    To use AI-powered code analysis, an admin must configure the OpenRouter API key.
+                    <br><br>
+                    Please contact your administrator to set up the API key for these features.
+                </div>
+                <div class="error-actions">
+                    <button class="error-btn primary" id="goto-admin-btn">Go to Admin Panel</button>
+                    <button class="error-btn secondary" id="close-error-btn">Close</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../../js/utils.js"></script>
+    <script src="../../js/global.js"></script>
+    <script src="../../js/data-service.js"></script>
+    <script src="code-explainer.js"></script>
+</body>
+</html>

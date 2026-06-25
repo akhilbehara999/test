@@ -1,0 +1,93 @@
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 40px;
+    background: rgba(10, 14, 39, 0.8);
+    border-bottom: 1px solid var(--accent-color);
+    position: relative;
+    z-index: 100;
+}
+
+.dashboard-header h1 {
+    font-size: 2em;
+    color: var(--accent-color);
+    margin: 0;
+    position: relative;
+    z-index: 101;
+    text-shadow: 
+        0 0 10px rgba(0, 212, 255, 0.5),
+        0 0 20px rgba(0, 212, 255, 0.3);
+}
+
+.logout-btn {
+    background: transparent;
+    border: 1px solid var(--accent-color);
+    color: var(--accent-color);
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s, color 0.3s;
+}
+
+.logout-btn:hover {
+    background: var(--accent-color);
+    color: var(--background-color);
+    box-shadow: 0 0 15px var(--accent-color);
+    transform: translateY(-2px);
+}
+
+.dashboard-main {
+    padding: 40px;
+    position: relative;
+    z-index: 50;
+}
+
+.module-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+    padding: 20px 0;
+}
+
+.module-card {
+    background: rgba(10, 14, 39, 0.9);
+    border: 1px solid #00d4ff;
+    border-radius: 10px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 20px;
+}
+
+.module-card:hover {
+    background: rgba(10, 14, 39, 0.95);
+    border-color: #ffd700;
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 212, 255, 0.3);
+}
+
+.module-card h2 {
+    color: #00d4ff;
+    font-size: 1.8em;
+    margin: 0 0 15px 0;
+    font-weight: 600;
+    text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+}
+
+.module-card:hover h2 {
+    color: #ffffff;
+    text-shadow: 0 0 15px rgba(0, 212, 255, 0.8);
+}
+
+.module-card p {
+    color: #e6f3ff;
+    font-size: 1rem;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.module-card:hover p {
+    color: #ffffff;
+}

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Code Explainer Output</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-case {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .test-code {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .expected-output {
+            background-color: #e8f5e9;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .actual-output {
+            background-color: #fff3e0;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Code Explainer Output Functionality</h1>
+    
+    <div class="test-case">
+        <h2>Test Case 1: Simple Print Statement</h2>
+        <div class="test-code">
+console.log("Hello, World!");
+        </div>
+        <div class="expected-output">
+            <strong>Expected Output:</strong>
+            Hello, World!
+        </div>
+        <button onclick="testOutput1()">Test Output</button>
+        <div class="actual-output" id="output1">
+            Click the button to see the actual output
+        </div>
+    </div>
+    
+    <div class="test-case">
+        <h2>Test Case 2: Function with Return Value</h2>
+        <div class="test-code">
+function add(a, b) {
+    return a + b;
+}
+console.log(add(5, 3));
+        </div>
+        <div class="expected-output">
+            <strong>Expected Output:</strong>
+            8
+        </div>
+        <button onclick="testOutput2()">Test Output</button>
+        <div class="actual-output" id="output2">
+            Click the button to see the actual output
+        </div>
+    </div>
+    
+    <div class="test-case">
+        <h2>Test Case 3: Error Case</h2>
+        <div class="test-code">
+console.log(undefinedVariable);
+        </div>
+        <div class="expected-output">
+            <strong>Expected Output:</strong>
+            Error: [description of the error]
+        </div>
+        <button onclick="testOutput3()">Test Output</button>
+        <div class="actual-output" id="output3">
+            Click the button to see the actual output
+        </div>
+    </div>
+
+    <script>
+        // Mock function to simulate the code explainer output functionality
+        async function simulateCodeExplainerOutput(code) {
+            // This is a simplified simulation of what the AI might return
+            // In the actual implementation, this would call the OpenRouter API
+            if (code.includes('console.log("Hello, World!");')) {
+                return "Hello, World!";
+            } else if (code.includes('return a + b;')) {
+                return "8";
+            } else if (code.includes('undefinedVariable')) {
+                return "Error: undefinedVariable is not defined";
+            } else {
+                return "Output not specified for this test case";
+            }
+        }
+
+        async function testOutput1() {
+            const output = await simulateCodeExplainerOutput('console.log("Hello, World!");');
+            document.getElementById('output1').innerHTML = '<strong>Actual Output:</strong><br>' + output;
+        }
+
+        async function testOutput2() {
+            const output = await simulateCodeExplainerOutput('function add(a, b) { return a + b; } console.log(add(5, 3));');
+            document.getElementById('output2').innerHTML = '<strong>Actual Output:</strong><br>' + output;
+        }
+
+        async function testOutput3() {
+            const output = await simulateCodeExplainerOutput('console.log(undefinedVariable);');
+            document.getElementById('output3').innerHTML = '<strong>Actual Output:</strong><br>' + output;
+        }
+    </script>
+</body>
+</html>

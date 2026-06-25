@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Check Users</title>
+</head>
+<body>
+    <h1>Users in localStorage</h1>
+    <pre id="users"></pre>
+    <script>
+        const users = JSON.parse(localStorage.getItem('users')) || [];
+        document.getElementById('users').textContent = JSON.stringify(users, null, 2);
+        
+        // Also check if initialization worked
+        console.log('Users:', users);
+    </script>
+</body>
+</html>

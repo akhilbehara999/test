@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang=\"en\">
+<head>
+    <meta charset=\"UTF-8\">
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+    <title>Smart Campus Bot - Test Runner</title>
+    <link rel=\"stylesheet\" href=\"css/global.css\">
+    <style>
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .test-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .test-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .test-btn {
+            background-color: var(--accent-color);
+            color: var(--background-color);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .test-btn:hover {
+            opacity: 0.8;
+        }
+        
+        .test-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .test-output {
+            background-color: rgba(0, 212, 255, 0.1);
+            border: 1px solid var(--accent-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .test-summary {
+            background-color: rgba(255, 215, 0, 0.1);
+            border: 1px solid var(--success-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .test-summary.failed {
+            background-color: rgba(255, 71, 87, 0.1);
+            border-color: var(--error-color);
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success-color), var(--accent-color));
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: var(--accent-color);
+            text-decoration: none;
+            padding: 8px 16px;
+            border: 1px solid var(--accent-color);
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+        
+        .back-link:hover {
+            background-color: var(--accent-color);
+            color: var(--background-color);
+        }
+    </style>
+</head>
+<body>
+    <div class=\"test-container\">
+        <a href=\"index.html\" class=\"back-link\">← Back to Login</a>
+        
+        <div class=\"test-header\">
+            <h1>🧪 Smart Campus Bot Test Suite</h1>
+            <p>Comprehensive testing for core application functionality</p>
+        </div>
+        
+        <div class=\"test-controls\">
+            <button id=\"run-all-btn\" class=\"test-btn\">Run All Tests</button>
+            <button id=\"run-utils-btn\" class=\"test-btn\">Test Utils</button>
+            <button id=\"run-crypto-btn\" class=\"test-btn\">Test Crypto</button>
+            <button id=\"run-data-btn\" class=\"test-btn\">Test Data</button>
+            <button id=\"clear-btn\" class=\"test-btn\">Clear Output</button>
+            <button id=\"export-btn\" class=\"test-btn\">Export Results</button>
+        </div>
+        
+        <div class=\"progress-bar\">
+            <div id=\"progress-fill\" class=\"progress-fill\"></div>
+        </div>
+        
+        <div id=\"test-summary\" class=\"test-summary\" style=\"display: none;\">
+            <h3>Test Results Summary</h3>
+            <div id=\"summary-content\"></div>
+        </div>
+        
+        <div id=\"test-output\" class=\"test-output\">
+            Welcome to the Smart Campus Bot Test Suite!
+            
+            This test runner will execute comprehensive tests for:
+            • Input sanitization and validation
+            • Cryptographic security functions
+            • User authentication and management
+            • Data persistence and retrieval
+            
+            Click \"Run All Tests\" to begin testing, or run individual test suites.
+        </div>
+    </div>
+    
+    <!-- Include all necessary scripts -->
+    <script src=\"js/utils.js\"></script>
+    <script src=\"js/crypto-utils.js\"></script>
+    <script src=\"js/data.js\"></script>
+    <script src=\"js/global.js\"></script>
+    <script src=\"js/test-framework.js\"></script>
+    
+    <!-- Test suites -->
+    <script src=\"tests/utils.test.js\"></script>
+    <script src=\"tests/crypto-utils.test.js\"></script>
+    <script src=\"tests/data.test.js\"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const runAllBtn = document.getElementById('run-all-btn');
+            const runUtilsBtn = document.getElementById('run-utils-btn');
+            const runCryptoBtn = document.getElementById('run-crypto-btn');
+            const runDataBtn = document.getElementById('run-data-btn');
+            const clearBtn = document.getElementById('clear-btn');
+            const exportBtn = document.getElementById('export-btn');
+            const testOutput = document.getElementById('test-output');
+            const testSummary = document.getElementById('test-summary');
+            const summaryContent = document.getElementById('summary-content');
+            const progressFill = document.getElementById('progress-fill');
+            
+            let testResults = null;
+            
+            // Override console methods to capture output
+            const originalConsole = {
+                log: console.log,
+                error: console.error,
+                group: console.group,
+                groupEnd: console.groupEnd
+            };
+            
+            function captureConsoleOutput() {
+                testOutput.textContent = 'Running tests...\n\n';
+                
+                console.log = (...args) => {
+                    testOutput.textContent += args.join(' ') + '\n';
+                    testOutput.scrollTop = testOutput.scrollHeight;
+                    originalConsole.log(...args);
+                };
+                
+                console.error = (...args) => {
+                    testOutput.textContent += 'ERROR: ' + args.join(' ') + '\n';
+                    testOutput.scrollTop = testOutput.scrollHeight;
+                    originalConsole.error(...args);
+                };
+                
+                console.group = (label) => {
+                    testOutput.textContent += '\n📁 ' + label + '\n';
+                    testOutput.textContent += '─'.repeat(50) + '\n';
+                    originalConsole.group(label);
+                };
+                
+                console.groupEnd = () => {
+                    testOutput.textContent += '─'.repeat(50) + '\n';
+                    originalConsole.groupEnd();
+                };
+            }
+            
+            function restoreConsoleOutput() {
+                console.log = originalConsole.log;
+                console.error = originalConsole.error;
+                console.group = originalConsole.group;
+                console.groupEnd = originalConsole.groupEnd;
+            }
+            
+            function updateProgress(percentage) {
+                progressFill.style.width = percentage + '%';
+            }
+            
+            function showSummary(results) {
+                testResults = results;
+                testSummary.style.display = 'block';
+                
+                if (results.failed === 0) {
+                    testSummary.classList.remove('failed');
+                } else {
+                    testSummary.classList.add('failed');
+                }
+                
+                summaryContent.innerHTML = `
+                    <div style=\"display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 15px;\">
+                        <div>
+                            <strong>Total Tests:</strong><br>
+                            <span style=\"font-size: 1.5em; color: var(--accent-color);\">${results.total}</span>
+                        </div>
+                        <div>
+                            <strong>Passed:</strong><br>
+                            <span style=\"font-size: 1.5em; color: var(--success-color);\">${results.passed}</span>
+                        </div>
+                        <div>
+                            <strong>Failed:</strong><br>
+                            <span style=\"font-size: 1.5em; color: var(--error-color);\">${results.failed}</span>
+                        </div>
+                        <div>
+                            <strong>Pass Rate:</strong><br>
+                            <span style=\"font-size: 1.5em; color: ${results.passRate >= 90 ? 'var(--success-color)' : results.passRate >= 70 ? 'var(--accent-color)' : 'var(--error-color)'};\"> ${results.passRate}%</span>
+                        </div>
+                    </div>
+                    <div style=\"font-size: 1.2em; text-align: center; margin-top: 10px;\">
+                        ${results.failed === 0 ? '🎉 All tests passed!' : `⚠️ ${results.failed} test(s) failed`}
+                    </div>
+                `;
+            }
+            
+            async function runTests() {
+                captureConsoleOutput();
+                updateProgress(0);
+                
+                // Disable buttons during test run
+                const buttons = [runAllBtn, runUtilsBtn, runCryptoBtn, runDataBtn];
+                buttons.forEach(btn => btn.disabled = true);
+                
+                try {
+                    // Reset test framework
+                    resetTests();
+                    
+                    // Simulate progress
+                    updateProgress(25);
+                    
+                    // Small delay to let tests complete
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    updateProgress(75);
+                    
+                    // Get final results
+                    const results = runAllTests();
+                    updateProgress(100);
+                    
+                    showSummary(results);
+                    
+                } catch (error) {
+                    console.error('Test execution error:', error);
+                } finally {
+                    restoreConsoleOutput();
+                    buttons.forEach(btn => btn.disabled = false);
+                }
+            }
+            
+            // Event listeners
+            runAllBtn.addEventListener('click', runTests);
+            
+            runUtilsBtn.addEventListener('click', () => {
+                captureConsoleOutput();
+                resetTests();
+                // Utils tests would run automatically when the script loads
+                setTimeout(() => {
+                    const results = runAllTests();
+                    showSummary(results);
+                    restoreConsoleOutput();
+                }, 500);
+            });
+            
+            clearBtn.addEventListener('click', () => {
+                testOutput.textContent = 'Output cleared. Ready for new tests.\n';
+                testSummary.style.display = 'none';
+                updateProgress(0);
+            });
+            
+            exportBtn.addEventListener('click', () => {
+                if (testResults) {
+                    const exportData = {
+                        timestamp: new Date().toISOString(),
+                        results: testResults,
+                        output: testOutput.textContent
+                    };
+                    
+                    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+                        type: 'application/json'
+                    });
+                    
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `test-results-${new Date().toISOString().split('T')[0]}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                } else {
+                    alert('No test results to export. Please run tests first.');
+                }
+            });
+        });
+    </script>
+</body>
+</html>"

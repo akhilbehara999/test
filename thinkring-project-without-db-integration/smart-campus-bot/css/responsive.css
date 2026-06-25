@@ -1,0 +1,72 @@
+/* For tablets and smaller desktops */
+@media (max-width: 992px) {
+    .login-box {
+        width: 80%;
+    }
+
+    .module-grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+}
+
+/* For mobile devices */
+@media (max-width: 768px) {
+    .dashboard-header, .admin-header, header {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    main {
+        padding: 20px;
+    }
+
+    .module-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .module-card:hover {
+        transform: none; /* Disable 3D hover on mobile */
+    }
+
+    #chat-window {
+        height: 70vh;
+    }
+}
+
+/* Smaller mobile devices */
+@media (max-width: 480px) {
+    .login-box {
+        padding: 20px;
+    }
+
+    .login-box h1 {
+        font-size: 2em;
+    }
+
+    .controls {
+        flex-direction: column;
+    }
+
+    /* Admin Dashboard Specifics */
+    .overview-grid, .charts-grid-local, .charts-grid, .module-links-grid {
+        grid-template-columns: 1fr; /* Stack grids on mobile */
+    }
+
+    .user-management-container .table-wrapper, .table-wrapper {
+        overflow-x: auto; /* Allow horizontal scrolling for tables */
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    }
+
+    #user-table {
+        min-width: 600px; /* Ensure table has a minimum width to scroll */
+    }
+
+    /* General form improvements on mobile */
+    #report-form, #create-group-form, #template-form, #api-key-form, #train-form {
+        padding: 20px;
+    }
+
+    .search-controls {
+        flex-direction: column;
+    }
+}

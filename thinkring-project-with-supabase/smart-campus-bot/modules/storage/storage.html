@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Storage - Smart Service Campus Bot</title>
+    <link rel="stylesheet" href="../../css/global.css">
+    <link rel="stylesheet" href="storage.css">
+    <link rel="stylesheet" href="../../css/responsive.css">
+</head>
+<body>
+    <div id="loader-wrapper">
+        <div class="loader"></div>
+        <div class="loader-text">Loading Module...</div>
+    </div>
+    <header>
+        <h1>Personal Cloud Storage</h1>
+        <a href="../../dashboard.html" class="back-link">Back to Dashboard</a>
+    </header>
+
+    <main>
+        <div id="user-view">
+            <div id="drop-zone">
+                <p>Drag & Drop files here or click to upload</p>
+                <input type="file" id="file-input" multiple style="display: none;">
+            </div>
+            <input type="text" id="search-storage" placeholder="Search files...">
+            <div id="file-list"></div>
+        </div>
+
+        <div id="admin-view" style="display: none;">
+
+            <div class="admin-section">
+                <h2>Storage Overview</h2>
+                <div class="stats-grid">
+                    <div>Total Usage: <strong id="total-usage">-- MB</strong></div>
+                    <div>Total Files: <strong id="total-files">--</strong></div>
+                    <div>Total Capacity: <strong>50 MB (Simulated)</strong></div>
+                </div>
+            </div>
+
+            <div class="admin-section">
+                <h2>Top Users by Storage</h2>
+                <canvas id="top-users-chart" width="400" height="200"></canvas>
+            </div>
+
+            <div class="admin-section">
+                <h2>All Stored Files</h2>
+                <div class="table-wrapper">
+                    <table id="all-files-table">
+                        <thead>
+                            <tr>
+                                <th>Filename</th>
+                                <th>Size (KB)</th>
+                                <th>Uploaded By</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- File data will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script src="../../js/utils.js"></script>
+    <script src="../../js/global.js"></script>
+    <script src="storage.js"></script>
+</body>
+</html>

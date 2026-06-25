@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz - Smart Service Campus Bot</title>
+    <link rel="stylesheet" href="../../css/global.css">
+    <link rel="stylesheet" href="../../css/enhanced-dropdowns.css">
+    <link rel="stylesheet" href="quiz-modern.css">
+    <link rel="stylesheet" href="../../css/responsive.css">
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="quiz-module">
+    <div id="loader-wrapper">
+        <div class="loader"></div>
+        <div class="loader-text">Loading Module...</div>
+    </div>
+    <header>
+        <h1>Knowledge Check</h1>
+        <a href="../../dashboard.html" class="back-link" id="header-back-link">← Dashboard</a>
+    </header>
+
+    <main>
+        <div id="quiz-container">
+            <div id="start-screen">
+                <div class="quiz-card">
+                    <div class="quiz-card-header">
+                        <h2 class="quiz-card-title">🧠 Test Your Knowledge</h2>
+                        <p class="quiz-card-subtitle">Choose your quiz mode and settings for an engaging learning experience.</p>
+                    </div>
+                    
+                    <button id="view-progress-start-btn" class="btn btn-outline">
+                        <span class="btn-icon">📈</span>
+                        View Your Progress
+                    </button>
+                </div>
+                
+                <!-- AI-Powered Quiz Mode -->
+                <div class="quiz-card">
+                    <div class="mode-header">
+                        <h3 class="quiz-card-title">🤖 Online AI Quiz</h3>
+                        <span class="mode-badge online">AI Powered</span>
+                    </div>
+                    <p class="quiz-card-subtitle">Generate unlimited questions on any topic using AI! Perfect for continuous practice and exploring new subjects.</p>
+                    <div class="ai-quiz-options">
+                        <div class="input-group">
+                            <label>Enter Topic:</label>
+                            <input type="text" id="quiz-topic" placeholder="e.g., JavaScript Programming, World History, Biology..." maxlength="100">
+                            <div class="topic-suggestions">
+                                <span class="suggestion-tag" onclick="document.getElementById('quiz-topic').value='JavaScript Programming'">JavaScript</span>
+                                <span class="suggestion-tag" onclick="document.getElementById('quiz-topic').value='World History'">History</span>
+                                <span class="suggestion-tag" onclick="document.getElementById('quiz-topic').value='Basic Mathematics'">Math</span>
+                                <span class="suggestion-tag" onclick="document.getElementById('quiz-topic').value='General Science'">Science</span>
+                                <span class="suggestion-tag" onclick="document.getElementById('quiz-topic').value='English Literature'">Literature</span>
+                            </div>
+                        </div>
+                        <div class="ai-settings">
+                            <div class="select-wrapper">
+                                <label>Question Count:</label>
+                                <select id="ai-question-count">
+                                    <option value="5">5 Questions</option>
+                                    <option value="10" selected>10 Questions</option>
+                                    <option value="15">15 Questions</option>
+                                    <option value="20">20 Questions</option>
+                                </select>
+                            </div>
+                            <div class="select-wrapper">
+                                <label>Difficulty:</label>
+                                <select id="ai-difficulty">
+                                    <option value="easy">Easy</option>
+                                    <option value="medium" selected>Medium</option>
+                                    <option value="hard">Hard</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button id="ai-quiz-btn" class="btn btn-secondary">
+                            <span class="btn-icon">🧠</span>
+                            Generate AI Quiz
+                        </button>
+                    </div>
+                    <div id="ai-status" class="ai-status idle">⚪ AI Ready</div>
+                </div>
+            </div>
+
+            <!-- Student Progress History -->
+            <div id="progress-screen" style="display: none;">
+                <div class="quiz-card">
+                    <div class="progress-header">
+                        <h2 class="quiz-card-title">📈 Your Progress</h2>
+                        <button id="back-to-quiz-btn" class="btn btn-outline">Back to Quiz</button>
+                    </div>
+                    
+                    <div class="progress-stats">
+                        <div class="stat-card">
+                            <div class="stat-value" id="student-total-quizzes">0</div>
+                            <div class="stat-label">Total Quizzes</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="student-avg-score">0%</div>
+                            <div class="stat-label">Average Score</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="student-best-score">0%</div>
+                            <div class="stat-label">Best Score</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="student-ai-quizzes">0</div>
+                            <div class="stat-label">AI Quizzes</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="quiz-card">
+                    <h3 class="quiz-card-title">Recent Quiz History</h3>
+                    <div id="quiz-history-container">
+                        <!-- Quiz history will be populated here -->
+                    </div>
+                </div>
+
+                <div class="quiz-card">
+                    <h3 class="quiz-card-title">🏆 Achievements</h3>
+                    <div id="achievements-container">
+                        <!-- Achievements will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <div id="quiz-screen" style="display: none;">
+                <!-- Quiz Header with Progress and Timer -->
+                <div class="quiz-header">
+                    <div class="progress-info">
+                        <span class="question-number">Question <span id="current-question">1</span> of <span id="total-questions">10</span></span>
+                        <span class="quiz-mode-indicator" id="quiz-mode-indicator">🤖 AI Quiz</span>
+                    </div>
+                    
+                    <div class="quiz-timer" id="quiz-timer" style="display: none;">
+                        <div class="timer-display">
+                            <span id="timer-minutes">02</span>:<span id="timer-seconds">00</span>
+                        </div>
+                        <div class="timer-warning" id="timer-warning" style="display: none;">⚠️ Time Running Out!</div>
+                    </div>
+                </div>
+
+                <!-- Question Content -->
+                <div class="question-content">
+                    <div id="question-container"></div>
+                    <div id="options-container"></div>
+                </div>
+
+                <!-- Quiz Controls -->
+                <div class="quiz-controls">
+                    <button id="hint-btn" class="control-btn btn btn-outline" style="display: none;">
+                        <span class="btn-icon">💡</span>
+                        Hint
+                    </button>
+                    <button id="next-btn" class="control-btn btn btn-primary" style="display: none;">
+                        <span class="btn-icon">➡️</span>
+                        Next Question
+                    </button>
+                    <button id="finish-btn" class="control-btn btn btn-secondary" style="display: none;">
+                        <span class="btn-icon">🏁</span>
+                        Finish Quiz
+                    </button>
+                </div>
+            </div>
+
+            <div id="results-screen" style="display: none;">
+                <!-- Enhanced Results Header -->
+                <div class="quiz-card results-header">
+                    <div class="results-icon" id="results-icon">🎉</div>
+                    <h2 id="results-title">Quiz Complete!</h2>
+                    <div class="quiz-type-badge" id="results-quiz-type">🤖 AI Quiz</div>
+                </div>
+
+                <!-- Score Display -->
+                <div class="score-display">
+                    <div class="main-score">
+                        <span class="score-label">Your Score</span>
+                        <span class="score-value" id="score">0/10</span>
+                        <span class="score-percentage" id="score-percentage">0%</span>
+                    </div>
+                    
+                    <div class="score-breakdown">
+                        <div class="breakdown-item">
+                            <span class="breakdown-icon">✅</span>
+                            <span class="breakdown-label">Correct</span>
+                            <span class="breakdown-value" id="correct-count">0</span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span class="breakdown-icon">❌</span>
+                            <span class="breakdown-label">Incorrect</span>
+                            <span class="breakdown-value" id="incorrect-count">0</span>
+                        </div>
+                        <div class="breakdown-item" id="time-breakdown" style="display: none;">
+                            <span class="breakdown-icon">⏱️</span>
+                            <span class="breakdown-label">Time Taken</span>
+                            <span class="breakdown-value" id="time-taken">00:00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Results -->
+                <div class="quiz-card">
+                    <h3 class="quiz-card-title">📝 Question Review</h3>
+                    <div class="results-toggle">
+                        <button class="toggle-btn active" data-filter="all">All Questions</button>
+                        <button class="toggle-btn" data-filter="correct">Correct (✅)</button>
+                        <button class="toggle-btn" data-filter="incorrect">Incorrect (❌)</button>
+                    </div>
+                    <div id="question-review-container">
+                        <!-- Detailed question review will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="quiz-card">
+                    <div class="results-actions">
+                        <button id="view-progress-btn" class="btn btn-outline">
+                            <span class="btn-icon">📈</span>
+                            View Progress
+                        </button>
+                        <button id="play-again-btn" class="btn btn-primary">
+                            <span class="btn-icon">🔄</span>
+                            Take Another Quiz
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="admin-view" style="display: none;">
+            <div class="quiz-card">
+                <h2 class="quiz-card-title">Add / Edit Question</h2>
+                <form id="add-question-form">
+                    <input type="hidden" id="question-id"> <!-- For editing -->
+                    <div class="input-group">
+                        <label for="question-text">Question:</label>
+                        <input type="text" id="question-text" placeholder="Enter your question" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="correct-answer">Correct Answer:</label>
+                        <input type="text" id="correct-answer" placeholder="Enter the correct answer" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="incorrect-answer-1">Incorrect Answer 1:</label>
+                        <input type="text" id="incorrect-answer-1" placeholder="Enter an incorrect answer" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="incorrect-answer-2">Incorrect Answer 2:</label>
+                        <input type="text" id="incorrect-answer-2" placeholder="Enter an incorrect answer" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="incorrect-answer-3">Incorrect Answer 3:</label>
+                        <input type="text" id="incorrect-answer-3" placeholder="Enter an incorrect answer" required>
+                    </div>
+                    <button type="submit" id="form-submit-btn" class="btn btn-primary">Add Question</button>
+                    <button type="button" id="form-cancel-btn" class="btn btn-outline" style="display: none;">Cancel Edit</button>
+                </form>
+            </div>
+
+            <div class="quiz-card">
+                <h2 class="quiz-card-title">📋 Question Bank Management</h2>
+                <div class="question-bank-stats">
+                    <div class="stat-card">
+                        <span class="stat-value" id="total-questions-count">0</span>
+                        <span class="stat-label">Total Questions</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="custom-questions-count">0</span>
+                        <span class="stat-label">Custom Questions</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="question-categories-count">0</span>
+                        <span class="stat-label">Categories</span>
+                    </div>
+                </div>
+                
+                <div class="question-filters">
+                    <input type="text" id="question-search" placeholder="Search questions..." class="search-input">
+                    <select id="question-category-filter" class="filter-select">
+                        <option value="all">All Categories</option>
+                        <option value="custom">Custom Questions</option>
+                        <option value="9">General Knowledge</option>
+                        <option value="18">Computer Science</option>
+                    </select>
+                    <select id="question-difficulty-filter" class="filter-select">
+                        <option value="all">All Difficulties</option>
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </div>
+                
+                <table id="questions-table" class="enhanced-table">
+                    <thead>
+                        <tr>
+                            <th>Question</th>
+                            <th>Category</th>
+                            <th>Difficulty</th>
+                            <th>Usage Count</th>
+                            <th>Success Rate</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Questions will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="quiz-card">
+                <h2 class="quiz-card-title">Upload Questions (JSON)</h2>
+                <input type="file" id="json-upload" accept=".json">
+                <button id="upload-btn" class="btn btn-primary">Upload</button>
+            </div>
+
+            <div class="quiz-card">
+                <h2 class="quiz-card-title">📈 Comprehensive Analytics Dashboard</h2>
+                
+                <!-- Overview Stats -->
+                <div class="analytics-overview">
+                    <div class="progress-stats">
+                        <div class="stat-card">
+                            <div class="stat-value" id="avg-score">--%</div>
+                            <div class="stat-label">Average Score</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="total-quizzes">0</div>
+                            <div class="stat-label">Total Quizzes</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="ai-questions-generated">0</div>
+                            <div class="stat-label">AI Questions Generated</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="active-students">0</div>
+                            <div class="stat-label">Active Students</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Performance Charts -->
+                <div class="analytics-charts">
+                    <div class="chart-section">
+                        <h3 class="quiz-card-title">📉 Quiz Performance Distribution</h3>
+                        <div class="chart-container">
+                            <canvas id="quiz-analytics-chart" width="400" height="200"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Removed "AI vs Offline Quiz Usage" chart since offline quiz functionality has been removed -->
+                    <!-- 
+                    <div class="chart-section">
+                        <h3 class="quiz-card-title">🔄 AI vs Offline Quiz Usage</h3>
+                        <div class="chart-container">
+                            <canvas id="quiz-mode-chart" width="400" height="200"></canvas>
+                        </div>
+                    </div>
+                    -->
+
+                    <!-- Difficult Questions Analysis -->
+                    <div class="quiz-card">
+                        <h3 class="quiz-card-title">⚠️ Most Difficult Questions</h3>
+                        <div id="difficult-questions-list" class="question-analysis-list">
+                            <!-- Difficult questions will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Student Performance Insights -->
+                    <div class="quiz-card">
+                        <h3 class="quiz-card-title">🎓 Student Performance Insights</h3>
+                        <div class="insights-grid">
+                            <div class="insight-card">
+                                <h4>Top Performers</h4>
+                                <div id="top-performers-list">
+                                    <!-- Top performers will be populated here -->
+                                </div>
+                            </div>
+                            <div class="insight-card">
+                                <h4>Students Needing Help</h4>
+                                <div id="struggling-students-list">
+                                    <!-- Students needing help will be populated here -->
+                                </div>
+                            </div>
+                            <div class="insight-card">
+                                <h4>Popular Topics (AI Quizzes)</h4>
+                                <div id="popular-topics-list">
+                                    <!-- Popular AI topics will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="quiz-card">
+                        <h3 class="quiz-card-title">🕐 Recent Quiz Activity</h3>
+                        <div id="recent-activity-list" class="activity-list">
+                            <!-- Recent activity will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Error Modal for API Configuration -->
+    <div id="error-modal" class="error-modal">
+        <div class="error-content">
+            <div class="error-icon">🚨</div>
+            <div class="error-title">API Configuration Required</div>
+            <div class="error-message">
+                To use AI-powered quiz generation, an admin must configure the OpenRouter API key.
+                <br><br>
+                Please contact your administrator to set up the API key for this feature.
+            </div>
+            <div class="error-actions">
+                <button class="error-btn primary" id="goto-admin-btn">Go to Admin Panel</button>
+                <button class="error-btn secondary" id="close-error-btn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Removed offline error modal since offline quiz functionality has been removed -->
+    <!-- 
+    <div id="offline-error-modal" class="error-modal offline-error">
+        <div class="error-content">
+            <div class="error-icon">📚</div>
+            <div class="error-title">No Offline Questions Available</div>
+            <div class="error-message">
+                There are currently no offline questions available for the selected difficulty level.
+                <br><br>
+                Please try a different difficulty level or contact your administrator to add more questions.
+            </div>
+            <div class="error-actions">
+                <button class="error-btn primary" id="try-ai-quiz-btn">Try AI Quiz Instead</button>
+                <button class="error-btn secondary" id="close-offline-error-btn">Close</button>
+            </div>
+        </div>
+    </div>
+    -->
+
+    <script src="../../js/utils.js"></script>
+    <script src="../../js/global.js"></script>
+    <script src="../../js/supabase-config.js"></script>
+    <script src="../../js/supabase.js"></script>
+    <script src="../../js/api-config-supabase.js"></script>
+    <script src="../../js/init-api-config.js"></script>
+    <script src="quiz.js"></script>
+</body>
+</html>

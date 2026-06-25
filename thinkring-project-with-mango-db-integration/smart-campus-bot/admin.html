@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Service Campus Bot - Admin</title>
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="css/admin.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+    <div id="loader-wrapper">
+        <div class="loader"></div>
+        <div class="loader-text">Loading Admin Panel...</div>
+    </div>
+    <header class="admin-header">
+        <h1>Admin Dashboard</h1>
+        <div class="admin-header-actions">
+            <button id="ai-config-btn" class="admin-config-btn" title="Configure AI Settings">🤖 AI Setup</button>
+            <button id="logout-btn" class="logout-btn">Logout</button>
+        </div>
+    </header>
+    <main class="admin-main">
+        <div class="overview-grid">
+            <div class="overview-card">
+                <h3>Total Users</h3>
+                <p id="total-users">--</p>
+            </div>
+            <div class="overview-card">
+                <h3>System Usage</h3>
+                <p id="system-usage">--</p>
+            </div>
+            <div class="overview-card">
+                <h3>Recent Alerts</h3>
+                <p id="recent-alerts">--</p>
+            </div>
+            <div class="overview-card">
+                <h3>Voice Status</h3>
+                <p id="voice-status" class="status-ok">Operational</p>
+            </div>
+        </div>
+
+        <div class="admin-insights-grid">
+            <div class="insight-card">
+                <div class="insight-header">
+                    <span class="insight-icon">📊</span>
+                    <h3>System Analytics</h3>
+                </div>
+                <div class="insight-content">
+                    <div class="metric">
+                        <span class="metric-label">Active Sessions</span>
+                        <span class="metric-value" id="active-sessions">--</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Daily Logins</span>
+                        <span class="metric-value" id="daily-logins">--</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Module Usage</span>
+                        <span class="metric-value" id="module-usage">--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="insight-card">
+                <div class="insight-header">
+                    <span class="insight-icon">🔒</span>
+                    <h3>Security Status</h3>
+                </div>
+                <div class="insight-content">
+                    <div class="security-item">
+                        <span class="security-label">Password Security</span>
+                        <span class="security-status secure">✓ Enhanced</span>
+                    </div>
+                    <div class="security-item">
+                        <span class="security-label">Session Management</span>
+                        <span class="security-status secure">✓ Active</span>
+                    </div>
+                    <div class="security-item">
+                        <span class="security-label">Input Validation</span>
+                        <span class="security-status secure">✓ Protected</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="insight-card">
+                <div class="insight-header">
+                    <span class="insight-icon">⚡</span>
+                    <h3>Performance</h3>
+                </div>
+                <div class="insight-content">
+                    <div class="performance-metric">
+                        <span class="perf-label">Page Load Time</span>
+                        <span class="perf-value" id="load-time">--</span>
+                    </div>
+                    <div class="performance-metric">
+                        <span class="perf-label">Error Rate</span>
+                        <span class="perf-value" id="error-rate">--</span>
+                    </div>
+                    <div class="performance-metric">
+                        <span class="perf-label">Cache Hit Rate</span>
+                        <span class="perf-value" id="cache-rate">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="module-management-container">
+            <h2>Module Management</h2>
+            <div class="module-links-grid">
+                <a href="modules/lost-found/lost-found.html?view=admin" class="module-link">Lost & Found</a>
+                <a href="modules/attendance/attendance.html?view=admin" class="module-link">Attendance</a>
+                <a href="modules/quiz/quiz.html?view=admin" class="module-link">Quizzes</a>
+                <a href="modules/book/book.html?view=admin" class="module-link">Book Tools</a>
+                <a href="modules/code-explainer/code-explainer.html?view=admin" class="module-link">Code Explainer</a>
+                <a href="modules/storage/storage.html?view=admin" class="module-link">Storage</a>
+                <a href="modules/chatbot/chatbot.html?view=admin" class="module-link">Chatbot</a>
+                <a href="modules/study-groups/study-groups.html?view=admin" class="module-link">Study Groups</a>
+            </div>
+        </div>
+
+        <div class="user-management-container">
+            <h2>User Management</h2>
+            <input type="text" id="user-search" placeholder="Search users...">
+            <div class="table-wrapper">
+                <table id="user-table">
+                    <thead>
+                        <tr>
+                        <th>Username</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- User data will be populated here -->
+                </tbody>
+            </table>
+        </div>
+    </main>
+    <script src="js/utils.js"></script>
+    <script src="js/crypto-utils.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/data-service.js"></script>
+    <script src="js/global.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>

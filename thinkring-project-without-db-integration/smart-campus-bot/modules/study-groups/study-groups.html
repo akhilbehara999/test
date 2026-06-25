@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Groups - Smart Service Campus Bot</title>
+    <link rel="stylesheet" href="../../css/global.css">
+    <link rel="stylesheet" href="study-groups.css">
+    <link rel="stylesheet" href="../../css/responsive.css">
+</head>
+<body>
+    <div id="loader-wrapper">
+        <div class="loader"></div>
+        <div class="loader-text">Loading Module...</div>
+    </div>
+    <header>
+        <h1>Find Your Study Crew</h1>
+        <a href="../../dashboard.html" class="back-link">Back to Dashboard</a>
+    </header>
+
+    <main>
+        <div id="user-views">
+            <div id="groups-container">
+                <div id="group-list-view">
+                    <h2>Available Study Groups</h2>
+                    <button id="create-group-btn">Create New Group</button>
+                    <div id="group-list"></div>
+                </div>
+
+                <div id="create-group-view" style="display: none;">
+                    <h2>Create a New Study Group</h2>
+                    <form id="create-group-form">
+                        <input type="text" id="group-name" placeholder="Group Name" required>
+                        <textarea id="group-description" placeholder="What's this group about?"></textarea>
+                        <button type="submit">Create Group</button>
+                        <button type="button" id="cancel-create-btn">Cancel</button>
+                    </form>
+                </div>
+
+                <div id="group-chat-view" style="display: none;">
+                    <h2 id="current-group-name"></h2>
+                    <div id="chat-messages"></div>
+                    <div id="chat-input-container">
+                        <input type="text" id="chat-input" placeholder="Type a message...">
+                        <button id="send-message-btn">Send</button>
+                    </div>
+                    <button id="back-to-groups-btn">Back to Groups</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="admin-view" style="display: none;">
+            <div class="admin-section">
+                <h2>Group Management</h2>
+                <table id="groups-table">
+                    <thead>
+                        <tr>
+                            <th>Group Name</th>
+                            <th>Members</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Group data will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="admin-section">
+                <h2>Global Announcement</h2>
+                <form id="announcement-form">
+                    <textarea id="announcement-message" placeholder="Enter your announcement..." required></textarea>
+                    <button type="submit">Send to All Groups</button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script src="../../js/utils.js"></script>
+    <script src="../../js/global.js"></script>
+    <script src="study-groups.js"></script>
+</body>
+</html>

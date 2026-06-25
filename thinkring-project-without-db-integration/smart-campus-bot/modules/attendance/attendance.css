@@ -1,0 +1,507 @@
+/* Attendance Module - Time Tracking & Academic Interface */
+
+/* Clock and time-based animations */
+@keyframes clockTick {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes attendanceRipple {
+    0% {
+        transform: scale(0);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+@keyframes statusPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(34, 139, 34, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(34, 139, 34, 0);
+    }
+}
+
+/* Real-time clock display */
+.time-display {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, rgba(34, 139, 34, 0.2), rgba(0, 212, 255, 0.1));
+    border: 2px solid #228B22;
+    color: #228B22;
+    padding: 12px 20px;
+    border-radius: 25px;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    z-index: 1000;
+    box-shadow: 0 4px 15px rgba(34, 139, 34, 0.3);
+    animation: statusPulse 2s ease-in-out infinite;
+}
+
+.time-display::before {
+    content: '🕐';
+    margin-right: 8px;
+    animation: clockTick 60s linear infinite;
+    display: inline-block;
+}
+
+/* Academic calendar theme */
+.calendar-grid {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        linear-gradient(rgba(34, 139, 34, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(34, 139, 34, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 40px;
+    background: linear-gradient(135deg, rgba(10, 14, 39, 0.95), rgba(34, 139, 34, 0.1));
+    border-bottom: 2px solid #228B22;
+    position: relative;
+    overflow: hidden;
+}
+
+header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(34, 139, 34, 0.2), transparent);
+    animation: attendanceFlow 3s ease-in-out infinite;
+}
+
+@keyframes attendanceFlow {
+    0%, 100% { left: -100%; }
+    50% { left: 100%; }
+}
+
+h1 {
+    color: #228B22;
+    text-shadow: 0 0 15px rgba(34, 139, 34, 0.5);
+    font-weight: 300;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+h1::before {
+    content: '📋';
+    font-size: 0.8em;
+    animation: attendanceIconBounce 2s ease-in-out infinite;
+}
+
+@keyframes attendanceIconBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+.back-link {
+    color: #228B22;
+    text-decoration: none;
+    border: 1px solid #228B22;
+    padding: 10px 15px;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.back-link::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: rgba(34, 139, 34, 0.3);
+    transition: left 0.3s ease;
+    z-index: -1;
+}
+
+.back-link:hover::before {
+    left: 0;
+}
+
+.back-link:hover {
+    background: #228B22;
+    color: var(--background-color);
+    box-shadow: 0 0 20px rgba(34, 139, 34, 0.5);
+    transform: translateY(-2px);
+}
+
+main {
+    padding: 40px;
+    background: radial-gradient(circle at 30% 70%, rgba(34, 139, 34, 0.05) 0%, transparent 50%);
+    position: relative;
+}
+
+main::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        linear-gradient(rgba(34, 139, 34, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(34, 139, 34, 0.05) 1px, transparent 1px);
+    background-size: 30px 30px;
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+/* Enhanced attendance entry forms with academic styling */
+#manual-entry-form, #file-upload {
+    margin-bottom: 40px;
+    padding: 25px;
+    background: linear-gradient(135deg, rgba(34, 139, 34, 0.1), rgba(0, 212, 255, 0.05));
+    border: 2px solid rgba(34, 139, 34, 0.3);
+    border-radius: 15px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+#manual-entry-form::before, #file-upload::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #228B22, #32CD32, #228B22);
+    background-size: 200% 100%;
+    animation: formHeaderFlow 3s ease-in-out infinite;
+}
+
+@keyframes formHeaderFlow {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+#manual-entry-form input, #manual-entry-form select, #file-upload input, #roll-number-search {
+    margin-right: 10px;
+    padding: 12px 15px;
+    background: rgba(34, 139, 34, 0.1);
+    border: 1px solid rgba(34, 139, 34, 0.3);
+    border-radius: 10px;
+    color: var(--text-color);
+    transition: all 0.3s ease;
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+#manual-entry-form input:focus, #manual-entry-form select:focus, #file-upload input:focus, #roll-number-search:focus {
+    border-color: #228B22;
+    box-shadow: 
+        inset 0 2px 10px rgba(0, 0, 0, 0.1),
+        0 0 20px rgba(34, 139, 34, 0.3);
+    background: rgba(34, 139, 34, 0.15);
+}
+
+#manual-entry-form button, #process-file-btn {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #228B22, #32CD32);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    cursor: pointer;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 15px rgba(34, 139, 34, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+#manual-entry-form button::before, #process-file-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s ease;
+}
+
+#manual-entry-form button:hover::before, #process-file-btn:hover::before {
+    left: 100%;
+}
+
+#manual-entry-form button:hover, #process-file-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(34, 139, 34, 0.4);
+}
+
+/* Enhanced attendance display with status animations */
+#attendance-display {
+    margin-top: 20px;
+    background: linear-gradient(135deg, rgba(10, 14, 39, 0.9), rgba(34, 139, 34, 0.1));
+    border: 2px solid #228B22;
+    padding: 30px;
+    border-radius: 15px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 
+        0 10px 30px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+#attendance-display::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #228B22, #32CD32, #228B22);
+}
+
+/* Enhanced attendance table with status indicators */
+#attendance-table {
+    width: 100%;
+    border-collapse: collapse;
+    position: relative;
+}
+
+#attendance-table th, #attendance-table td {
+    padding: 15px;
+    border-bottom: 1px solid rgba(34, 139, 34, 0.2);
+    text-align: left;
+    transition: all 0.3s ease;
+}
+
+#attendance-table th {
+    background: linear-gradient(135deg, rgba(10, 14, 39, 0.95), rgba(34, 139, 34, 0.1));
+    position: sticky;
+    top: 0;
+    color: #228B22;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+#attendance-table tr {
+    transition: all 0.3s ease;
+}
+
+#attendance-table tr:hover {
+    background: rgba(34, 139, 34, 0.1);
+    transform: translateX(5px);
+}
+
+/* Status indicators with animations */
+.status-present {
+    color: #32CD32;
+    font-weight: bold;
+    position: relative;
+}
+
+.status-present::before {
+    content: '✓';
+    margin-right: 5px;
+    animation: checkMarkPulse 2s ease-in-out infinite;
+}
+
+@keyframes checkMarkPulse {
+    0%, 100% {
+        color: #32CD32;
+        text-shadow: 0 0 5px rgba(50, 205, 50, 0.5);
+    }
+    50% {
+        color: #228B22;
+        text-shadow: 0 0 10px rgba(34, 139, 34, 0.8);
+    }
+}
+
+.status-absent {
+    color: #FF6B6B;
+    font-weight: bold;
+    position: relative;
+}
+
+.status-absent::before {
+    content: '✗';
+    margin-right: 5px;
+    animation: crossPulse 2s ease-in-out infinite;
+}
+
+@keyframes crossPulse {
+    0%, 100% {
+        color: #FF6B6B;
+        text-shadow: 0 0 5px rgba(255, 107, 107, 0.5);
+    }
+    50% {
+        color: #FF4757;
+        text-shadow: 0 0 10px rgba(255, 71, 87, 0.8);
+    }
+}
+
+#consolidated-records {
+    margin-top: 40px;
+}
+
+.table-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+#record-search {
+    width: 60%;
+}
+
+#export-csv-btn {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #32CD32, #228B22);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    cursor: pointer;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 15px rgba(50, 205, 50, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+#export-csv-btn::before {
+    content: '📊';
+    margin-right: 8px;
+}
+
+#export-csv-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(50, 205, 50, 0.4);
+}
+
+.table-wrapper {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--accent-color);
+    border-radius: 5px;
+}
+
+#attendance-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#attendance-table th, #attendance-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+    text-align: left;
+}
+
+#attendance-table th {
+    background-color: rgba(10, 14, 39, 0.9);
+    position: sticky;
+    top: 0;
+}
+
+.status-select {
+    width: 100%;
+    padding: 10px;
+    background: linear-gradient(135deg, #0c102c, rgba(34, 139, 34, 0.1));
+    border: 1px solid #228B22;
+    color: var(--text-color);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.status-select:focus {
+    border-color: #32CD32;
+    box-shadow: 0 0 15px rgba(34, 139, 34, 0.3);
+    background: linear-gradient(135deg, #0c102c, rgba(34, 139, 34, 0.15));
+}
+
+/* Export and control buttons */
+#export-csv-btn {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #32CD32, #228B22);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    cursor: pointer;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 15px rgba(50, 205, 50, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+#export-csv-btn::before {
+    content: '📊';
+    margin-right: 8px;
+}
+
+#export-csv-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(50, 205, 50, 0.4);
+}
+
+/* Real-time attendance stats */
+.attendance-stats {
+    display: flex;
+    justify-content: space-around;
+    margin: 20px 0;
+    padding: 20px;
+    background: rgba(34, 139, 34, 0.1);
+    border-radius: 15px;
+    border: 1px solid rgba(34, 139, 34, 0.3);
+}
+
+.stat-item {
+    text-align: center;
+    position: relative;
+}
+
+.stat-number {
+    font-size: 2em;
+    font-weight: bold;
+    color: #228B22;
+    display: block;
+    animation: numberCounter 1s ease-out;
+}
+
+.stat-label {
+    color: var(--light-text-color);
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+@keyframes numberCounter {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance - Smart Service Campus Bot</title>
+    <link rel="stylesheet" href="../../css/global.css">
+    <link rel="stylesheet" href="../../css/enhanced-dropdowns.css">
+    <link rel="stylesheet" href="attendance.css">
+    <link rel="stylesheet" href="../../css/responsive.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js'></script>
+</head>
+<body class="attendance-module">
+    <div id="loader-wrapper">
+        <div class="loader"></div>
+        <div class="loader-text">Loading Module...</div>
+    </div>
+    <header>
+        <h1>Attendance Tracker</h1>
+        <a href="../../dashboard.html" class="back-link">Back to Dashboard</a>
+    </header>
+
+    <main>
+        <div id="user-view">
+            <section id="attendance-input">
+                <h2>Check Your Attendance</h2>
+                <input type="text" id="roll-number-search" placeholder="Enter your Roll Number...">
+                <div id="attendance-display"></div>
+            </section>
+        </div>
+
+        <div id="admin-view" style="display: none;">
+            <section id="manual-entry">
+                <h2>Manual Attendance Entry</h2>
+                <form id="manual-entry-form">
+                    <input type="text" id="roll-number" placeholder="Roll Number" required>
+                    <input type="date" id="date" required>
+                    <select id="status" required>
+                        <option value="present">Present</option>
+                        <option value="absent">Absent</option>
+                    </select>
+                    <button type="submit">Add Record</button>
+                </form>
+            </section>
+
+            <section id="file-upload">
+                <h2>Upload Attendance File</h2>
+                <p>Upload a CSV, PDF, or image file.</p>
+                <input type="file" id="attendance-file" accept=".csv, .pdf, image/*">
+                <button id="process-file-btn">Process File</button>
+                <div id="file-processing-status"></div>
+            </section>
+
+            <section id="consolidated-records">
+                <h2>Consolidated Records</h2>
+                <div class="table-controls">
+                    <input type="text" id="record-search" placeholder="Search by Roll Number...">
+                    <button id="export-csv-btn">Export to CSV</button>
+                </div>
+                <div class="table-wrapper">
+                    <table id="attendance-table">
+                        <thead>
+                            <tr>
+                                <th>Roll Number</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Records will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="../../js/utils.js"></script>
+    <script src="../../js/global.js"></script>
+    <script src="attendance.js"></script>
+</body>
+</html>

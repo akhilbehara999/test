@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Service Campus Bot - Login</title>
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="css/login.css">
+    <link rel="stylesheet" href="css/login-modern.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+    <div id="loader-wrapper">
+        <div class="loader"></div>
+        <div class="loader-text">Initializing Smart Campus Systems...</div>
+    </div>
+    <div id="particle-container"></div>
+    <div class="login-container">
+        <div class="login-box">
+            <h1>Welcome to Smart Service Campus</h1>
+            <p>Your immersive campus experience awaits</p>
+            <form id="login-form">
+                <div class="input-group">
+                    <input type="text" id="username" required>
+                    <label for="username">Username</label>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="password" required>
+                    <label for="password">Password</label>
+                </div>
+                <button type="submit" class="login-btn">Authenticate</button>
+            </form>
+            <p id="login-message"></p>
+            <button id="admin-access-btn" class="admin-access-btn">Admin Access</button>
+        </div>
+    </div>
+    <script src="js/utils.js"></script>
+    <script src="js/crypto-utils.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/global.js"></script>
+    <script src="js/login-modern-animations.js"></script>
+    <script src="js/login.js"></script>
+</body>
+</html>

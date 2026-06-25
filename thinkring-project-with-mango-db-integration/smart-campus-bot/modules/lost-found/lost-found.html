@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lost & Found - Smart Service Campus Bot</title>
+    <link rel="stylesheet" href="../../css/global.css">
+    <link rel="stylesheet" href="lost-found.css">
+    <link rel="stylesheet" href="../../css/responsive.css">
+</head>
+<body>
+    <div id="loader-wrapper">
+        <div class="loader"></div>
+        <div class="loader-text">Loading Module...</div>
+    </div>
+    <header>
+        <h1>Lost & Found</h1>
+        <a href="../../dashboard.html" class="back-link">Back to Dashboard</a>
+    </header>
+
+    <main>
+        <!-- User View -->
+        <div id="user-view">
+            <section id="report-item">
+                <h2>Report a Lost or Found Item</h2>
+                <form id="report-form">
+                    <select id="item-type" required>
+                        <option value="lost">I Lost Something</option>
+                        <option value="found">I Found Something</option>
+                    </select>
+                    <input type="text" id="item-name" placeholder="Item Name" required>
+                    <select id="item-category" required>
+                        <option value="">-- Select Category --</option>
+                        <option value="electronics">Electronics</option>
+                        <option value="books">Books</option>
+                        <option value="stationery">Stationery</option>
+                        <option value="clothing">Clothing</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <input type="date" id="item-date" required>
+                    <input type="text" id="item-location" placeholder="Location Last Seen / Found" required>
+                    <textarea id="item-description" placeholder="Description" required></textarea>
+                    <input type="text" id="item-contact" placeholder="Contact Info (Email or Phone)" required>
+                    <label for="item-image" class="file-upload-label">Upload an Image (Optional)</label>
+                    <input type="file" id="item-image" accept="image/*">
+                    <img id="image-preview" src="#" alt="Image Preview" style="display:none; max-width: 200px; margin-top: 10px; border-radius: 5px;"/>
+                    <button type="submit">Submit Report</button>
+                </form>
+            </section>
+
+            <section id="search-items">
+                <h2>Search for an Item</h2>
+                <div class="search-controls">
+                    <input type="text" id="search-bar" placeholder="Search by name, category, or location...">
+                    <select id="filter-status">
+                        <option value="all">All Items</option>
+                        <option value="lost">Lost</option>
+                        <option value="found">Found</option>
+                    </select>
+                    <select id="sort-by">
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                    </select>
+                </div>
+                <div id="item-list"></div>
+            </section>
+        </div>
+
+        <!-- Admin View -->
+        <div id="admin-view" style="display: none;">
+            <div class="analytics-panel">
+                <h3>Item Analytics</h3>
+                <div class="charts-grid-local">
+                    <div class="chart-container-local">
+                        <h4>Lost vs Found</h4>
+                        <canvas id="lost-found-admin-chart" width="300" height="150"></canvas>
+                    </div>
+                    <div class="chart-container-local">
+                        <h4>By Category</h4>
+                        <canvas id="category-chart" width="300" height="150"></canvas>
+                    </div>
+                    <div class="chart-container-local">
+                        <h4>Reports This Week</h4>
+                        <canvas id="trend-chart" width="300" height="150"></canvas>
+                    </div>
+                </div>
+            </div>
+            <h2>Manage Reported Items</h2>
+            <div id="admin-item-list" class="table-wrapper">
+                <table id="admin-items-table">
+                    <thead>
+                        <tr>
+                            <th>Item Name</th>
+                            <th>Category</th>
+                            <th>Reported By</th>
+                            <th>Contact</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Admin item rows will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="../../js/utils.js"></script>
+    <script src="../../js/global.js"></script>
+    <script src="../../js/data-service.js"></script>
+    <script src="lost-found.js"></script>
+
+    <!-- Contact Modal -->
+    <div id="contact-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <button class="close-btn" id="close-modal-btn">&times;</button>
+            <h2>Contact Reporter</h2>
+            <p>Your message will be sent securely. Your contact information will not be shared directly.</p>
+            <form id="contact-form">
+                <input type="hidden" id="contact-item-id">
+                <textarea id="contact-message" placeholder="Type your message here..." required></textarea>
+                <input type="email" id="user-contact-info" placeholder="Your Email for a Reply" required>
+                <button type="submit">Send Message</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test API Connection</title>
+</head>
+<body>
+    <h1>Test API Connection</h1>
+    <button id="testButton">Test API</button>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('testButton').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing...';
+            
+            try {
+                // Test getting all lost and found items
+                const getResponse = await fetch('http://127.0.0.1:3000/api/lostfound');
+                const getResult = await getResponse.json();
+                resultDiv.innerHTML = `<p>GET response: ${JSON.stringify(getResult)}</p>`;
+                
+                // Test creating a new item
+                const postResponse = await fetch('http://127.0.0.1:3000/api/lostfound', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: 'Test Item',
+                        description: 'This is a test item from frontend test',
+                        type: 'lost',
+                        category: 'other',
+                        date: '2023-01-01',
+                        location: 'Library',
+                        contact: 'test@example.com'
+                    })
+                });
+                
+                const postResult = await postResponse.json();
+                resultDiv.innerHTML += `<p>POST response: ${JSON.stringify(postResult)}</p>`;
+                
+                // Test getting all items again to see if the new item is there
+                const getResponse2 = await fetch('http://127.0.0.1:3000/api/lostfound');
+                const getResult2 = await getResponse2.json();
+                resultDiv.innerHTML += `<p>GET response after POST: ${JSON.stringify(getResult2)}</p>`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<p>Error: ${error.message}</p>`;
+                console.error('Error:', error);
+            }
+        });
+    </script>
+</body>
+</html>

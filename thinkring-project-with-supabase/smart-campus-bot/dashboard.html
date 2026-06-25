@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Service Campus Bot - Dashboard</title>
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+    <div id="loader-wrapper">
+        <div class="loader"></div>
+        <div class="loader-text">Loading Command Center...</div>
+    </div>
+    <header class="dashboard-header">
+        <h1>Command Center</h1>
+        <button id="logout-btn" class="logout-btn">Logout</button>
+    </header>
+    <main class="dashboard-main">
+        <div class="module-grid">
+            <div class="module-card" data-module="lost-found" role="button" tabindex="0">
+                <h2>Lost & Found</h2>
+                <p>Report and find lost items on campus.</p>
+            </div>
+            <div class="module-card" data-module="attendance" role="button" tabindex="0">
+                <h2>Attendance</h2>
+                <p>Check and manage your attendance records.</p>
+            </div>
+            <div class="module-card" data-module="quiz" role="button" tabindex="0">
+                <h2>Quiz</h2>
+                <p>Test your knowledge with interactive quizzes.</p>
+            </div>
+            <div class="module-card" data-module="book" role="button" tabindex="0">
+                <h2>Book Tools</h2>
+                <p>Summarize, expand, and listen to texts.</p>
+            </div>
+            <div class="module-card" data-module="code-explainer" role="button" tabindex="0">
+                <h2>Code Explainer</h2>
+                <p>Analyze, explain, and simulate your code.</p>
+            </div>
+            <div class="module-card" data-module="storage" role="button" tabindex="0">
+                <h2>Storage</h2>
+                <p>Manage your personal cloud storage.</p>
+            </div>
+            <div class="module-card" data-module="chatbot" role="button" tabindex="0">
+                <h2>Chatbot</h2>
+                <p>Get instant answers from our campus AI.</p>
+            </div>
+            <div class="module-card" data-module="study-groups" role="button" tabindex="0">
+                <h2>Study Groups</h2>
+                <p>Find and collaborate with study partners.</p>
+            </div>
+        </div>
+    </main>
+    <script src="js/utils.js"></script>
+    <script src="js/crypto-utils.js"></script>
+    <script src="js/global.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>
